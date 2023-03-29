@@ -95,7 +95,7 @@ target_bft$lat <- (as.numeric(substr(target_bft$latddmm, start=1, stop=2)) +
 bft_sf <- st_as_sf(target_bft, coords=c('lon', 'lat'), crs='EPSG:4326')
 coast <- st_transform(ecodata::coast, crs=st_crs(bft_sf))
 # Plot just to see
-nwat <- st_read(here('Data/GIS/NWAtlanticshp.shp'))
+nwat <- st_read(here('Data/GIS/NWAtlantic.shp'))
 nwat <- st_transform(nwat, crs=st_crs(coast))
 
 # Remove points on land
@@ -125,7 +125,7 @@ rownames(target_bft) <- NULL
 head(target_bft)
 
 # Remove unnecessary columns
-target_bft <- dplyr::select(target_bft, id, year, fhours, depth, sst,
+target_bft <- dplyr::select(target_bft, id, year, month, day, fhours, depth, sst,
                             young_school_bft, school_bft, large_school_bft,
                             large_med_bft, giant_bft, lon, lat)
 
@@ -137,6 +137,8 @@ tempdf <- data.frame(
   Size_class = catchtype2,
   id=rep(NA, length(catchtype2)),
   year=rep(NA, length(catchtype2)),
+  month=rep(NA, length(catchtype2)),
+  day=rep(NA, length(catchtype2)),
   #month=rep(NA, length(catchtype)),
   #day=rep(NA, length(catchtype)),
   fhours=rep(NA, length(catchtype2)),
@@ -156,6 +158,8 @@ for(i in 1:length(dat.list)){
   
   tempdf.in$id <- temp$id
   tempdf.in$year <- temp$year
+  tempdf.in$month <- temp$month
+  tempdf.in$day <- temp$day
   #tempdf.in$month <- temp$month
   #tempdf.in$day <- temp$day
   tempdf.in$fhours <- temp$fhours

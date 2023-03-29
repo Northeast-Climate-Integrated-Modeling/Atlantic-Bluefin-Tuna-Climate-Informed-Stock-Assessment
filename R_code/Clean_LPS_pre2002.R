@@ -238,7 +238,7 @@ st_crs(dat_sf) <- "EPSG:4326"
 coast <- ecodata::coast
 coast <- st_transform(coast, crs=st_crs(dat_sf))
 
-nwat <- st_read(here('Data/GIS/NWAtlanticshp.shp'))
+nwat <- st_read(here('Data/GIS/NWAtlantic.shp'))
 nwat <- st_transform(nwat, crs=st_crs(coast))
 
 # Remove points on land
@@ -266,12 +266,12 @@ tbft <- tbft[tbft$ID %in% dat_sf$ID,]
 colnames(tbft) <- tolower(colnames(tbft))
 
 head(tbft)
-tbft <- dplyr::select(tbft, id, year, hours, depth, temp, spec, catch, lat, lon)
+tbft <- dplyr::select(tbft, id, year, month, day, hours, depth, temp, spec, catch, lat, lon)
 
-colnames(tbft) <- c('id', 'year', 'fhours','depth', 'sst', 'prim', 'catch', 'lat', 'lon')
+colnames(tbft) <- c('id', 'year', 'month', 'day', 'fhours','depth', 'sst', 'prim', 'catch', 'lat', 'lon')
 
 tbft <- merge(tbft, speccode, by=c('prim'))
-tbft <- dplyr::select(tbft, id, year, fhours, depth, sst, lon, lat,
+tbft <- dplyr::select(tbft, id, year, month, day, fhours, depth, sst, lon, lat,
                       size, catch)
 head(tbft)
 
@@ -281,6 +281,8 @@ tempdf <- data.frame(
   Size_class = catchtype2,
   id=rep(NA, length(catchtype2)),
   year=rep(NA, length(catchtype2)),
+  month=rep(NA, length(catchtype2)),
+  day=rep(NA, length(catchtype2)),
   #month=rep(NA, length(catchtype)),
   #day=rep(NA, length(catchtype)),
   fhours=rep(NA, length(catchtype2)),
@@ -300,6 +302,8 @@ for(i in 1:length(tb.list)){
   
   holddf$id <- temp$id[1]
   holddf$year <- temp$year[1]
+  holddf$month <- temp$month[1]
+  holddf$day <- temp$day[1]
   holddf$fhours <- temp$fhours[1]
   holddf$depth <- temp$depth[1]
   holddf$sst <- temp$sst[1]
