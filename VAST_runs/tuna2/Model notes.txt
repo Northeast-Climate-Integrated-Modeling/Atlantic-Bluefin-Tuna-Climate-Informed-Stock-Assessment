@@ -1,0 +1,56 @@
+## Model notes
+
+## Model 1, Attempt 2
+~/VAST_runs/tuna2
+tuna_model_2.R
+
+Run successfully 29 Mar 2023
+
+Observation data contained in data object `surv`
+	- Years: 1993 - 2021
+	- Categories: Small (young school, school, large school) and Large (large medium, giant)
+	- Response variable: CPUE (num caught each size group per trip/ fishing hours per trip)
+	- Effort: unitless 1
+	- Lat & Lon - decimal degrees, calculated from DDMM data provided during interviews
+
+Density covariate data contained in data object `scaled.covars`
+	- Density covariate data have been scaled as per recommendation from J Thorson
+	- SST: Recaulculated as deg C (provided as F, removed NA values and unrealistic values)
+	- Depth: Recalculated as M (provided as ft, removed NA values and unrealistic values)
+
+No catchability covariate data
+
+Spatial grid area contained in data object `grid_NWA_BTS`
+	- US EEZ waters from Cape Hatteras through Canadian maritime border
+	- Points on land excluded
+	- Currently using 100 knots and max 2000 grid cells (2000 is default and would need to be changed)
+
+Settings
+	- ObsModel error structure set to [4,1]
+		- ObsModel[4, ]: Delta-lognormal using bias-corrected-mean and log-coeff of var
+		- ObsModel[ ,1]: Poisson-link delta-model using log-link for numbers density (pred 1) and log-link for biomass per number (pred2)
+	- FieldConfig
+		- Epsilon2 value does not have sufficient gradient when building model, turned off (0)
+		- All other FieldConfig values default (IID)
+	- RhoConfig 
+		- All values default (0)
+	- Anisotropy on
+	- Space-building method: mesh
+	- Knot-buiding method: grid
+	- Fine-scale OFF
+	- Bias correct OFF
+
+Major Changes from previous model:
+	- Fixed effort issue: had to manually define "unitless" for units package. Works out fine.
+		- b_i changed to CPUE, a_i changed to unitless 1
+	- ObsModel changed to better error structure for a numbers-based model
+	- FieldConfig['Epsilon', 'component_2'] turned off to avoid issues
+
+Future
+	- Refine spatial grid: is it realistic to go all the way out to 200nmi or should I bring it inshore a bit
+		- We don't have any samples in the offshore half or so of the shapefile
+	- SST and Depth: fill in missing values with data from other datasets.
+	- Observation data: Pre 2002 data has very few trips with 0 recorded catch-- this clearly impacts the calculated index values
+		- Consider removing that data? Or somehow change error structure? Don't think I can set non-encounter spaces to 0 reliably.
+	- Spatial grid	
+		- 100 knots should be increased to 200
