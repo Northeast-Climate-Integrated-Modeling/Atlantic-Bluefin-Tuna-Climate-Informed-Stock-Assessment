@@ -11,7 +11,8 @@ library(beepr)
 # Negate function
 '%notin%' <- function(x,y)!('%in%'(x,y))
 # Add unitless back as possible unit (removed in units package update Mar 2023)
-install_unit(symbol='unitless', def='unitless', name='unitless')
+# Only needs to be done once
+# install_unit(symbol='unitless', def='unitless', name='unitless')
 # Set GGplot auto theme
 theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 panel.grid.minor = element_blank(),
