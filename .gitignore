@@ -4,3 +4,4 @@
 .RData
 *.Ruserdata
 schema.ini
+.Rproj.user
