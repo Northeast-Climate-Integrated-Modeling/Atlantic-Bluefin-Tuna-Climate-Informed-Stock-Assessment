@@ -54,5 +54,8 @@ ggplot()+
   coord_sf(xlim=c(-78, -65),
            ylim=c(35, 46))
 
+
+summary(dat)
+
 # Save
 write.csv(dat, row.names = F, here('Data/Clean/BFT_US_catch_VASTdata.csv'))

@@ -36,7 +36,7 @@ speccode <- data.frame(
 dat <- read.csv(here('Data/LPS/ALL/LPS_trip_level_0221.csv'))
 # Reduce dataframe to necessesities
 dat <- dplyr::select(dat,
-                     id, year, month, day,
+                     id, year, month, day, tourn,
                      stcode, prim_op,
                      prim1, prim2, fhours,
                      latddmm, londdmm, depth, sst,
@@ -125,7 +125,8 @@ rownames(target_bft) <- NULL
 head(target_bft)
 
 # Remove unnecessary columns
-target_bft <- dplyr::select(target_bft, id, year, month, day, fhours, depth, sst,
+target_bft <- dplyr::select(target_bft, id, year, month, day, tourn,
+                            fhours, depth, sst,
                             young_school_bft, school_bft, large_school_bft,
                             large_med_bft, giant_bft, lon, lat)
 
@@ -139,6 +140,7 @@ tempdf <- data.frame(
   year=rep(NA, length(catchtype2)),
   month=rep(NA, length(catchtype2)),
   day=rep(NA, length(catchtype2)),
+  tourn=rep(NA, length(catchtype2)),
   #month=rep(NA, length(catchtype)),
   #day=rep(NA, length(catchtype)),
   fhours=rep(NA, length(catchtype2)),
@@ -160,6 +162,7 @@ for(i in 1:length(dat.list)){
   tempdf.in$year <- temp$year
   tempdf.in$month <- temp$month
   tempdf.in$day <- temp$day
+  tempdf.in$tourn <- temp$tourn
   #tempdf.in$month <- temp$month
   #tempdf.in$day <- temp$day
   tempdf.in$fhours <- temp$fhours
@@ -180,5 +183,10 @@ dat2 <- do.call(rbind, dat.list)
 dat2 <- dat2[with(dat2, order(year, id)),]
 rownames(dat2) <- NULL
 head(dat2)
+
+# Check tournament codes
+table(dat2$tourn)
+# If tcode is skipped, refused, or dont know, set to 2 (NO)
+dat2$tourn[dat2$tourn %notin% c(1,2)] <- 2
 
 write.csv(dat2, here('Data/Clean/LPS_Post_2002_Clean.csv'), row.names = F)

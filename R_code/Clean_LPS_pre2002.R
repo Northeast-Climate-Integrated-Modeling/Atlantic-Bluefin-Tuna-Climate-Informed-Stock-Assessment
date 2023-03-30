@@ -108,6 +108,7 @@ dupids <- target_bft$ID[duplicated(target_bft$ID)]
 dups <- target_bft[target_bft$ID  %in% dupids,]
 dups <- dups[with(dups, order(ID, YEAR, MONTH, DAY)),]
 head(dups)
+target_bft$OLDID <- target_bft$ID
 # It's not unique. Make our own.
 target_bft$ID <- paste0(target_bft$SAMPLER, "_", 
                         target_bft$STATE, "_",
@@ -129,8 +130,8 @@ head(target_bft)
 
 # Remove unnecessary columns
 target_bft <- dplyr::select(target_bft, 
-                            -SAMPLER, -docnum, -TOURN, -PHONDOCK, -MARINA,
-                            -INLET, -BOAT, -TARGET, -FISHMETH, -GEAR,
+                            -SAMPLER, -docnum, -PHONDOCK, -MARINA,
+                            -INLET, -BOAT, -FISHMETH, -GEAR,
                             -ANGLERS, -LINES, -FISHAREA, -LANDCODE, 
                             -SURVTYPE)
 head(target_bft)
@@ -147,8 +148,9 @@ target_bft$CATCH8 <- target_bft$KEPT8 + target_bft$REL8
 target_bft$CATCH9 <- target_bft$KEPT9 + target_bft$REL9
 
 # Reduce data
-target_bft <- dplyr::select(target_bft,
-                            ID, YEAR, MONTH, DAY, STATE, BOATTYPE, HOURS, 
+target_bft <- dplyr::select(target_bft, OLDID,
+                            ID, YEAR, MONTH, DAY, TOURN, TARGET,
+                            STATE, BOATTYPE, HOURS, 
                             LATDEG, LATMIN, LONDEG, LONMIN,
                             DEPTH, TEMP, SPECMKT1, CATCH1, SPECMKT2, CATCH2,
                             SPECMKT3, CATCH3, SPECMKT4, CATCH4, SPECMKT5,
@@ -159,10 +161,13 @@ head(target_bft)
 # Reshape data
 bf.split <- split(target_bft, f=target_bft$ID)
 tempdat <- data.frame(
+  OLDID=rep(NA,9),
   ID=rep(NA, 9),
   YEAR=rep(NA, 9),
   MONTH =rep(NA, 9),
   DAY =rep(NA, 9),
+  TOURN=rep(NA,9),
+  TARGET=rep(NA,9),
   STATE=rep(NA, 9),
   BOATTYPE =rep(NA, 9),
   HOURS=rep(NA, 9),
@@ -188,11 +193,13 @@ for(i in 1:length(bf.split)){
   keepcatch <- c(temp$CATCH1, temp$CATCH2, temp$CATCH3,
                  temp$CATCH4, temp$CATCH5, temp$CATCH6,
                  temp$CATCH7, temp$CATCH8, temp$CATCH9)
-  
+  keep$OLDID <- temp$OLDID[1]
   keep$ID <-  temp$ID[1]
   keep$YEAR <- temp$YEAR[1]
   keep$MONTH <-  temp$MONTH[1]
   keep$DAY <- temp$DAY[1]
+  keep$TOURN <- temp$TOURN[1]
+  keep$TARGET <- temp$TARGET[1]
   keep$STATE <-  temp$STATE[1]
   keep$BOATTYPE <- temp$BOATTYPE[1]
   keep$HOURS <-  temp$HOURS[1]
@@ -266,12 +273,15 @@ tbft <- tbft[tbft$ID %in% dat_sf$ID,]
 colnames(tbft) <- tolower(colnames(tbft))
 
 head(tbft)
-tbft <- dplyr::select(tbft, id, year, month, day, hours, depth, temp, spec, catch, lat, lon)
+tbft <- dplyr::select(tbft, oldid, id, year, month, day, tourn, target, 
+                      hours, depth, temp, spec, catch, lat, lon)
 
-colnames(tbft) <- c('id', 'year', 'month', 'day', 'fhours','depth', 'sst', 'prim', 'catch', 'lat', 'lon')
+colnames(tbft) <- c('oldid', 'id', 'year', 'month', 'day', 'tourn', 'target',
+                    'fhours','depth', 'sst', 'prim', 'catch', 'lat', 'lon')
 
 tbft <- merge(tbft, speccode, by=c('prim'))
-tbft <- dplyr::select(tbft, id, year, month, day, fhours, depth, sst, lon, lat,
+tbft <- dplyr::select(tbft,oldid, id, year, month, day, tourn, target, 
+                      fhours, depth, sst, lon, lat,
                       size, catch)
 head(tbft)
 
@@ -279,10 +289,13 @@ tb.list <- split(tbft, f=tbft$id)
 catchtype2 <- c('small', 'large')
 tempdf <- data.frame(
   Size_class = catchtype2,
+  oldid=rep(NA, length(catchtype2)),
   id=rep(NA, length(catchtype2)),
   year=rep(NA, length(catchtype2)),
   month=rep(NA, length(catchtype2)),
   day=rep(NA, length(catchtype2)),
+  tourn=rep(NA, length(catchtype2)),
+  target=rep(NA, length(catchtype2)),
   #month=rep(NA, length(catchtype)),
   #day=rep(NA, length(catchtype)),
   fhours=rep(NA, length(catchtype2)),
@@ -300,10 +313,13 @@ for(i in 1:length(tb.list)){
   
   holddf <- tempdf
   
+  holddf$oldid <- temp$oldid[1]
   holddf$id <- temp$id[1]
   holddf$year <- temp$year[1]
   holddf$month <- temp$month[1]
   holddf$day <- temp$day[1]
+  holddf$tourn <- temp$tourn[1]
+  holddf$target <- temp$target[1]
   holddf$fhours <- temp$fhours[1]
   holddf$depth <- temp$depth[1]
   holddf$sst <- temp$sst[1]
@@ -342,4 +358,24 @@ tb$sst <- weathermetrics::fahrenheit.to.celsius(tb$sst,
                                                         round = 2)
 
 head(tb)
+
+# Check tournament codes
+table(tb$tourn)
+# If any value other than yes (1) or no (2), set to no (2)
+tb$tourn[tb$tourn %notin% c(1,2)] <- 2
+
+# Play with target
+table(tb$target)
+table(dat$TARGET)
+# I have no idea what this column means, let's see if maybe Alex's old dataframe
+# gives us any clues
+nwa <- read.csv(here('VAST_LPS/LPSvast.CSV'))
+nwa <- subset(nwa, year < 2002)
+keepnwa <- tb[tb$oldid %in% nwa$id,]
+table(keepnwa$target)
+# No. Ok.
+tb$oldid <- NULL
+
 write.csv(tb, here('Data/Clean/LPS_Pre_2002_Clean.csv'), row.names = F)
+
+
