@@ -102,10 +102,9 @@ settings <- make_settings(
   #max_cells = 5000
 )
 
-#settings$ObsModel[1] <- 4
-#settings$ObsModel[2] <- 1
+# Change settings to reflect 100% encounter rate
+settings$ObsModel[2] <- 4
 
-#settings$FieldConfig['Epsilon', 'Component_2'] <- 0
 
 fit = fit_model( 
   # Set wd
