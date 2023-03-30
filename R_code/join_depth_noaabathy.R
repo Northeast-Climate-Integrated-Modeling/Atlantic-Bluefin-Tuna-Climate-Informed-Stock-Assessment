@@ -30,12 +30,8 @@ stations <- read.csv(here('Data/Clean/AllYears_UpdatedSST.csv'))
 # Remember this is just station data, missing catch data from large category
 head(stations)
 
-# Load MARMAP bathymetry data
-Bathy <- getNOAA.bathy(lon1 = -80, lon2 = -60,
-                       lat1 = 30, lat2 = 50, 
-                       resolution = 1)
-# Convert to raster
-bathy_rast <- marmap::as.raster(Bathy)
+# Load GEBCO 15 arc second bathy grid
+bathy_rast <- raster(here('Data/Bathy/gebco_2022_n46.0_s35.0_w-78.0_e-65.0.asc'))
 # Reproject to unprojected wgs84 lat-lon
 bathy_rast <- raster::projectRaster(bathy_rast, 
                                     crs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
@@ -111,7 +107,7 @@ ggplot2::ggplot(stations, aes(x=depth, y=bathy, col=year)) +
 # Calculate difference
 stations$depthdif <- stations$depth - stations$bathy
 stations$depthdif[is.na(stations$depth) | is.na(stations$bathy)] <- NA
-hist(stations$depthdif, breaks=seq(-8840, 2810, 10),
+hist(stations$depthdif, breaks=seq(-8880, 2790, 10),
      xlim=c(-1000, 1000))
 # Huge prevalence of NOAA bathymetry underestimating field depth
 
@@ -126,7 +122,7 @@ ggplot2::ggplot() +
   coord_sf(xlim = c(-77, -65), 
            ylim = c(35, 45)) + 
   scale_color_gradient2(low = "blue",
-                        mid = "gray",
+                        mid = "yellow",
                         high = "red",
                         midpoint = 0,
                         limits=c(-8900, 2200),
@@ -147,7 +143,7 @@ yrmap <- function(mapyr){
     coord_sf(xlim = c(-77, -65), 
              ylim = c(35, 45)) + 
     scale_color_gradient2(low = "blue",
-                          mid = "gray",
+                          mid = "yellow",
                           high = "red",
                           #midpoint = 0,
                           limits=c(-8900, 2200),
@@ -166,9 +162,9 @@ for(mapyr in 1993:2021){
 
 # Executive decision: if field depth is within 215m deg of NOAA bathy, use field depth value
 # If field depth is more than 215m different from NOAA bathy, use NOAA bathy
-nrow(stations[!is.na(stations$depthdif) & abs(stations$depthdif) <= 170.0,]) / 
+nrow(stations[!is.na(stations$depthdif) & abs(stations$depthdif) <= 173,]) / 
   nrow(stations[!is.na(stations$depthdif),]) * 100
-# 90% of our observations with both values are within 170m
+# 85% of our observations with both values are within 173m
 
 # Call new columns
 stations$temp <- NA
@@ -177,20 +173,34 @@ stations$depthsource <- NA
 # Set temp to OISST when abs(sstdiff) >2
 # Retain source information
 for(i in 1:nrow(stations)){
-  if(!is.na(stations$depthdif[i]) & abs(stations$depthdif[i]) <=170){
+  if(!is.na(stations$depthdif[i]) & abs(stations$depthdif[i]) <=173){
     stations$temp[i] <- stations$depth[i]
     stations$depthsource[i] <- 'Field'
   }
-  if(is.na(stations$depthdif[i]) | abs(stations$depthdif[i]) >170){
+  if(is.na(stations$depthdif[i]) | abs(stations$depthdif[i]) >173){
     stations$temp[i] <- stations$bathy[i]
     stations$depthsource[i] <- 'NOAA'
   }
   
 }
-# Check how often we are substituting field data for OISST
+summary(stations$temp)
+# Still have some NA values-- can we fix this
+badvals <- stations[is.na(stations$temp),]
+badvals.sf <- st_as_sf(badvals, coords=c('lon', 'lat'))
+st_crs(badvals.sf) <- 'EPSG:4326'
+
+ggplot() +
+  geom_sf(data=coast, fill='gray') +
+  geom_sf(data=badvals.sf, col='black') +
+  coord_sf(xlim=c(-73, -69),
+           ylim=c(41, 43))
+# No. Chances are these are values that are actually on land. 
+# They will be removed in a later step.
+
+# Check how often we are substituting NOAA data for field
 barplot(t(prop.table(table(stations$year, stations$depthsource), margin=1)), legend=T)
 abline(h=0.7, col='red')
-# Most years are more than 70% populated by field SsT data
+# All years are more than 70% populated by field depth data
 
 # Remove unnecessary columns
 stations <- dplyr::select(stations,
