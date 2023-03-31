@@ -25,38 +25,166 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load prey data
-prey <- read.csv(here('Data/Prey_Data/bft_prey.csv'))
-head(prey)
-prey$X <- NULL
+preyorig <- read.csv(here('Data/Prey_Data/bft_preyV2.csv'))
+head(preyorig)
+preyorig$X <- NULL
 
 # Filter prey data
-prey <- prey %>% 
+prey <- preyorig %>% 
   drop_na(Lon) %>% 
   drop_na(Lat) %>% 
   filter(MONTH %in% c(6,7,8,9,10)) %>% 
   filter(YEAR > 1992 & YEAR < 2022)
 
-# Plot to see locations
-prey.sf <- st_as_sf(prey, coords=c('Lon', 'Lat'))
-st_crs(prey.sf) <- 'EPSG:4326'
-coast <- ecodata::coast
-coast <- st_transform(coast, st_crs(prey.sf))
+# Convert lbs to kgs
+prey$wt_kgs <- prey$wt_lbs * 0.45359237
 
-ggplot() +
-  geom_sf(data=coast, fill='gray')+
-  geom_sf(data=prey.sf, aes(col=YEAR)) +
-  coord_sf(xlim=c(-79, -66),
-           ylim=c(35, 45))
+# Remove columns
+prey <- dplyr::select(prey, -wt_lbs, -CATDISP)
 
-# Solid coverage.
+# Add padding 0s where needed
+prey$MONTH   <- str_pad(prey$MONTH, 2, "left", "0")
+prey$HAULNUM <- str_pad(prey$HAULNUM, 3, "left", "0")
+
+# Order
+prey <- prey[with(prey, order(YEAR, MONTH, TRIPID, HAULNUM, COMNAME)),]
+rownames(prey) <- NULL
+head(prey)
+
+# We want to condense all prey biomass taken in a single tow, since we don't care about
+# separating species in our general prey field model.
+# Currently, rows are separated by species. Let's try to figure out if any are from the 
+# same exact haul.
+prey$id <- paste0(prey$YEAR, 
+                  prey$MONTH,
+                  "_", 
+                  prey$OBGEARCAT, "-", 
+                  prey$TRIPID, "-",
+                  prey$HAULNUM,
+                  "_", 
+                  str_pad(prey$Lat, 17, "right", "0"), 
+                  str_pad(prey$Lon, 17, "right", "0")
+                  )
+head(prey)
+length(unique(prey$id))
+nrow(prey)
+
+# So it looks like there are some hauls that caught multiple species we care about.
+# Create table of ID values, remove instances in which ID is unique
+idtab <- as.data.frame(table(prey$id))
+idtab <- subset(idtab, Freq > 1)
+idtab <- idtab[with(idtab, order(Freq)),]
+head(idtab)
+
+# Create table of id vs. common name of species, remove rows that do not have their ID
+# also within the duplicate ID table
+spectab <- as.data.frame(table(prey$id, prey$COMNAME))
+spectab <- subset(spectab, Freq != 0)
+spectab <- spectab[spectab$Var1 %in% idtab$Var1,]
+
+# Create subset of prey dataframe in which it looks like 2 or more hauls are noted
+preycheck <- prey[prey$id %in% spectab$Var1,]
+
+# Remove these observations from the overall prey dataframe (will be added back as combo hauls)
+prey <- prey[prey$id %notin% preycheck$id,]
+
+# Transform to list, make sure there are no list items with only one row (1 species obs per haul)
+speclist <- split(preycheck, f=preycheck$id)
+speclist <- Filter(function(dt) nrow(dt) > 1, speclist)
+# If there are two or more unique species associated with an ID, combine.
+for(i in 1:length(speclist)){
+  intab <- table(speclist[[i]]$COMNAME)
+  tablen <- length(intab)
+  tabvals <- as.numeric(intab)
+  if(tablen !=1 & all(tabvals == 1)){
+    speclist[[i]]$wt_kgs <- sum(speclist[[i]]$wt_kgs)
+    speclist[[i]]$COMNAME[1] <- 'combo'
+    speclist[[i]] <- speclist[[i]][1,]
+  }
+  
+  rm(intab, tablen, tabvals)
+}
+altlist.1 <- Filter(function(dt) nrow(dt) == 1, speclist) 
+altlist.1 <- do.call(rbind, altlist.1)
+rownames(altlist.1) <- NULL
+
+# Add fixed results back to prey dataframe
+prey <- rbind(prey, altlist.1)
+prey <- prey[with(prey, order(YEAR, MONTH, TRIPID, HAULNUM, COMNAME)),]
+rownames(prey) <- NULL
+head(prey)
+
+# Remove fixed results from preycheck
+preycheck <- preycheck[preycheck$id %notin% prey$id,]
+# Still a few weird things to look at.
+# All the remaining rows have multiple entries for the same species within the same ID.
+# There's really nothing I can do but assume it was some sort of entry error.
+# Re start from the beginning, add all biomass together from same ID.
+
+rm(preycheck, prey, altlist.1, speclist, spectab, idtab, i)
+
+# Filter prey data
+prey <- preyorig %>% 
+  drop_na(Lon) %>% 
+  drop_na(Lat) %>% 
+  filter(MONTH %in% c(6,7,8,9,10)) %>% 
+  filter(YEAR > 1992 & YEAR < 2022)
 
 # Convert lbs to kgs
 prey$wt_kgs <- prey$wt_lbs * 0.45359237
 
 # Remove columns
-prey <- dplyr::select(prey, -wt_lbs, -OBGEARCAT, -CATDISP)
+prey <- dplyr::select(prey, -wt_lbs, -CATDISP)
+
+# Add padding 0s where needed
+prey$MONTH   <- str_pad(prey$MONTH, 2, "left", "0")
+prey$HAULNUM <- str_pad(prey$HAULNUM, 3, "left", "0")
+
+# Create ID
+prey$id <- paste0(prey$YEAR, 
+                  prey$MONTH,
+                  "_", 
+                  prey$OBGEARCAT, "-", 
+                  prey$TRIPID, "-",
+                  prey$HAULNUM,
+                  "_", 
+                  str_pad(prey$Lat, 17, "right", "0"), 
+                  str_pad(prey$Lon, 17, "right", "0")
+)
+
+# Split into list-based ID
+idlist <- split(prey, f=prey$id)
+
+# Combine all prey biomass for each haul, based on ID
+for(i in 1:length(idlist)){
+  if(nrow(idlist[[i]]) > 1){
+    idlist[[i]]$wt_kgs <- sum(idlist[[i]]$wt_kgs)
+    if(length(table(idlist[[i]]$COMNAME)) > 1){
+      idlist[[i]]$COMNAME <- 'COMBO'
+    }
+    
+    idlist[[i]] <- idlist[[i]][1,]
+  }
+}
+prey2 <- do.call(rbind, idlist)
+prey2 <- prey2[with(prey2, order(YEAR, MONTH, TRIPID, HAULNUM, COMNAME)),]
+rownames(prey2) <- NULL
+head(prey2)
+table(prey2$COMNAME)
+length(unique(prey$id)) == nrow(prey2)
+# Great. Moving on.
+
+prey <- prey2; rm(idlist, prey2, i)
+
+# Add row column to do polygon cutting
+prey$row <- seq(1, nrow(prey))
+
+# Convert to sf
 prey.sf <- st_as_sf(prey, coords=c('Lon', 'Lat'))
 st_crs(prey.sf) <- 'EPSG:4326'
+
+# Remove original dataframe- will convert sf results back to df
+rm(prey)
 
 # Cut to tuna polygon
 nwat <- st_read(here('Data/GIS/NWAtlantic.shp'))
@@ -64,23 +192,34 @@ nwat <- st_transform(nwat, st_crs(prey.sf))
 prey.sf <- st_intersection(prey.sf, nwat)
 
 # Remove locations on land
-prey.sf$row <- seq(1:nrow(prey.sf))
+coast <- ecodata::coast
+coast <- st_transform(coast, st_crs(prey.sf))
 onland <- st_intersection(prey.sf, coast)
-
 prey.sf <- prey.sf[prey.sf$row %notin% onland$row,]
 prey.sf$row <- NULL
 
-# Plot
+# Plot to see locations
+# Add tuna data
+dat <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata.csv'))
+dat.sf <- st_as_sf(dat, coords=c('lon', 'lat'))
+st_crs(dat.sf) <- "EPSG:4326"
+
 ggplot() +
   geom_sf(data=coast, fill='gray')+
   geom_sf(data=prey.sf, aes(col=YEAR)) +
+  geom_sf(data=dat.sf, col='red', pch=19, cex=0.25) +
   coord_sf(xlim=c(-79, -66),
            ylim=c(35, 45))
 
-# Great. save.
+# Solid coverage. Slightly less in the south. Not sure what else to add.
+# Convert back to df
 prey <- sfheaders::sf_to_df(prey.sf, fill=T)
-prey <- dplyr::select(prey, -FID, -sfg_id, -point_id)
-colnames(prey) <- c(colnames(prey)[1:4], 'lon', 'lat')
 colnames(prey) <- tolower(colnames(prey))
+prey <- dplyr::select(prey, -fid, -sfg_id, -point_id)
 
+colnames(prey) <- c(colnames(prey)[1:8], 'lon', 'lat')
+
+head(prey)
+
+# Save
 write.csv(prey, row.names = F, here('Data/Prey_Data/Clean_prey_data.csv'))
