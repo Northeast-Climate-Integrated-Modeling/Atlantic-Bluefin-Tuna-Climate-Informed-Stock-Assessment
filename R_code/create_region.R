@@ -73,5 +73,15 @@ ggplot(ecodata::coast) +
   geom_sf() +
   coord_sf(xlim=c(-76, -65), ylim=c(35, 46))
 
+# Remove gridpoints overlapping with land
+coast <- ecodata::coast
+coast <- st_transform(coast, crs=st_crs(region_sf))
+overland <- st_intersection(region_sf, coast)
+
+# Negate function
+'%notin%' <- function(x,y)!('%in%'(x,y))
+region_sf <- region_sf[region_sf$row  %notin% overland$row,]
+region <- region[region$row %notin% overland$row,]
+
 # Save it to be read in and passed to VAST later.
 saveRDS(region, file = here("Data/VAST_regions/tuna_region.rds"))
