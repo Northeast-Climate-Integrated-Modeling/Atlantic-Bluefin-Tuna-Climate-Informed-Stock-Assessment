@@ -76,12 +76,12 @@ ggplot(ecodata::coast) +
 # Remove gridpoints overlapping with land
 coast <- ecodata::coast
 coast <- st_transform(coast, crs=st_crs(region_sf))
-overland <- st_intersection(region_sf, coast)
+#overland <- st_intersection(region_sf, coast)
 
 # Negate function
-'%notin%' <- function(x,y)!('%in%'(x,y))
-region_sf <- region_sf[region_sf$row  %notin% overland$row,]
-region <- region[region$row %notin% overland$row,]
+#'%notin%' <- function(x,y)!('%in%'(x,y))
+#region_sf <- region_sf[region_sf$row  %notin% overland$row,]
+#region <- region[region$row %notin% overland$row,]
 
 # Save it to be read in and passed to VAST later.
 saveRDS(region, file = here("Data/VAST_regions/herring_region.rds"))
