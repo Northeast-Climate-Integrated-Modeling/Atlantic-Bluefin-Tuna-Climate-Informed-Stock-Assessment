@@ -1,0 +1,42 @@
+## Model notes
+
+## Model 1, Attempt 3
+~/VAST_runs/herring3
+herring_model_3.R
+
+Run successfully 3 Apr 2023
+
+Observation data contained in data object `surv`
+	- Years: 1993 - 2021
+	- Response variable: unitless herring+mackerel+menhaden caught
+	- Effort: unitless 1
+	- Lat & Lon - decimal degrees
+
+No density covariates
+
+No catchability covariate data
+
+Spatial grid area contained in data object `grid_NWA_BTS`
+	- US EEZ waters from Cape Hatteras through Canadian maritime border
+	- Points on land excluded
+	- Currently using 200 knots and max 2000 grid cells (2000 is default and would need to be changed)
+	- Grid has 25km by 25km cells, whereas tuna grid has 10km by 10km cells
+
+Settings
+	- ObsModel error structure set to [2,4]
+		- ObsModel[ ,4] set because encounter rate is 100% for all years
+	- FieldConfig & RhoConfig default values
+		- All IID for FieldConfig
+		- All 0 for RhoConfig
+	- Treat nonencounter as Zero OFF
+	- Anisotropy on
+	- Space-building method: mesh
+	- Knot-buiding method: grid
+	- Fine-scale OFF
+	- Bias correct OFF
+
+Future
+	- Find more accurate measurement of effort 
+
+Changes from previous model
+	- Set effort to unitless 1 and changed response variable from KG to unitless

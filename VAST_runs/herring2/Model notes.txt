@@ -28,6 +28,7 @@ Settings
 	- FieldConfig & RhoConfig default values
 		- All IID for FieldConfig
 		- All 0 for RhoConfig
+	- Treat nonencounter as Zero OFF
 	- Anisotropy on
 	- Space-building method: mesh
 	- Knot-buiding method: grid
@@ -40,3 +41,4 @@ Future
 Changes from previous model
 	- Combines other species for better spatial coverage and more realistic prey field
 	- Updated grid to more coarse grid cells
+	- Treat nonencounter as zero set to off; otherwise does not converge
