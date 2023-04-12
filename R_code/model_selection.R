@@ -21,47 +21,10 @@ install_unit(symbol='unitless', def='unitless', name='unitless')
 # Load data
 dat <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata.csv'))
 dat$depth <- dat$depth * -1
-dat$date <- as.POSIXct(paste0(dat$year, '-', dat$month, '-', dat$day),
-                       format='%Y-%m-%d')
 
 # Filter observations with no prey data
 dat <- dat %>% 
   drop_na(prey)
-
-# Add AMO and NAO
-nao <- read.csv(here('Data/Climate_Indices/daily_nao.csv'))
-nao$date <- as.POSIXct(paste0(nao$year, '-',
-                              nao$month, '-',
-                              nao$day),
-                       format="%Y-%m-%d")
-nao$nao.scale <- scale(nao$aao_index_cdas)
-ggplot() +
-  geom_point(data=nao[nao$year >=1993,], aes(x=date, y=nao.scale)) +
-  geom_smooth(data=nao[nao$year >=1993,], aes(x=date, y=nao.scale))
-
-nao <- nao %>% 
-  filter(year >= 1993 & year <=2021) %>% 
-  filter(month %in% seq(6, 10, 1))
-colnames(nao) <- c('year', 'month', 'day', 'nao', 'date', 'nao.scale')
-
-nao <- dplyr::select(nao, date, nao)
-head(nao)
-ggplot() +
-  geom_point(data=nao, aes(x=date, y=scale(nao))) +
-  geom_smooth(data=nao, aes(x=date, y=scale(nao)))
-
-dat <- merge(dat, nao, by=c('date'))
-
-amo <- read.csv(here('Data/Climate_Indices/monthly_amo.csv'))
-amo <- amo %>% 
-  filter(Year >= 1993 & Year <=2021) %>% 
-  filter(Month %in% c('Jun', 'Jul', 'Aug', 'Sep', 'Oct'))
-amo$monthno <- match(amo$Month,month.abb)
-amo$yrmo <- paste0(amo$Year, '-', amo$monthno)
-amo <- dplyr::select(amo, yrmo, Value)
-colnames(amo) <- c('yrmo', 'amo')
-dat$yrmo <- paste0(dat$year, '-', dat$month)
-dat <- merge(dat, amo, by=c('yrmo'))
 
 # Convert to sf for plotting
 dat_sf <- st_as_sf(dat, coords=c('lon', 'lat'))
@@ -83,8 +46,8 @@ str(survs)
 
 # Pull covariate values
 covars <- dplyr::select(dat,
-                        year, lon, lat, depth, sst, prey, amo, nao)
-colnames(covars) <- c('Year', 'Lon', 'Lat', 'depth', 'sst', 'prey', 'amo', 'nao')
+                        year, lon, lat, depth, sst, prey, amo, nao, slp)
+colnames(covars) <- c('Year', 'Lon', 'Lat', 'depth', 'sst', 'prey', 'amo', 'nao', 'slp')
 
 # Load grid
 grid_NWA_BTS <- readRDS(here("Data/VAST_regions/tuna_region.rds"))
@@ -100,6 +63,8 @@ grid_sf <- grid_sf[grid_sf$row  %notin% overland$row,]
 grid_NWA_BTS <- grid_NWA_BTS[grid_NWA_BTS$row %notin% overland$row,]
 user_region <- grid_NWA_BTS
 
+# Remove intermediates
+rm(coast, overland, dat_sf, grid_NWA_BTS, grid_sf)
 ###############################################################################
 # Describe model selection efforts
 
@@ -144,20 +109,27 @@ use_anisotropy <- TRUE
 
 
 # Model selection 2 (covariates) options, FieldConfig default (all IID)
-# _base         No covariates
-# _sst, _depth, _prey, _nao, _amo 
-# _sstdepth, _sstprey, _sstnao, _sstamo
-# _depthprey, _depthnao, _depthamo
-# _preynao, _preyamo
-# _naoamo
-# _sstdepthprey _sstdepthnao, _sstdepthamo, _sstpreynao, _sstpreyamo, _sstnaoamo
+# _base        
+
+# _sst, _depth, _prey, _nao, _amo, _slp
+
+# _sstdepth, _sstprey, _sstnao, _sstamo, _sstslp
+# _depthprey, _depthnao, _depthamo, _depthslp
+# _preynao, _preyamo, _preyslp
+# _naoamo, _naoslp
+# _amoslp
+
+
+# _sstdepthprey _sstdepthnao, _sstdepthamo, _sstpreynao, _sstpreyamo, _sstnaoamo, 
+# _sstdepthslp, 
 # _depthpreynao, _depthpreyamo, _depthnaoamo
 # _preynaoamo
+
+
 # _sstdepthpreynao, _sstdepthpreyamo, _sstpreynaoamo
 # _depthpreynaoamo
-# _all          all listed covariates
-# _eta1         vessel overdispersion in 1st predictor
-# _eta2         vessel overdispersion in 1st and 2nd predictors
+
+# _all          
 
 OverdispersionConfig	<- c("eta1"=0, "eta2"=0)
 # eta0 = no vessel effects
@@ -379,20 +351,28 @@ DT::datatable(modselect.200, rownames = FALSE,
 ###############################################################################
 # Model selection 2 setup: covariates
 # Define covariate combinations
+covar.combo <- c('sst', 'depth', 'prey', 'nao', 'amo', 'slp')
+covar.combo <- do.call("c", lapply(seq_along(covar.combo), 
+                                   function(i) combn(covar.combo, i, FUN = list)))
+for(i in 1:length(covar.combo)){
+  temp <- covar.combo[[i]]
+  use <- length(temp)
+  temp2 <- temp[[1]]
+  
+  if(use > 1){
+    for(j in 2:use){
+      temp2 <- paste0(temp2, temp[[j]])
+    }
+  }
 
-mod.covar <- c("base", 
-               "sst", "depth", "prey", "nao", "amo", 
-               "sstdepth", "sstprey", "sstnao", "sstamo",
-               "depthprey", 'depthnao', 'depthamo',
-               'preynao', 'preyamo',
-               'naoamo',
-               'sstdepthprey', 'sstdepthnao', 'sstdepthamo', 'sstpreynao', 'sstpreyamo', 'sstnaoamo',
-               'depthpreynao', 'depthpreyamo', 'depthnaoamo',
-               'preynaoamo',
-               'sstdepthpreynao', 'sstdepthpreyamo', 'sstpreynaoamo',
-               'depthpreynaoamo', 
-               'all')
-# 31 total models
+  covar.combo[[i]] <- temp2
+  #rm(temp, use, temp2)
+}
+covar.combo <- do.call(rbind, covar.combo)
+
+mod.covar <- c("base", covar.combo[1:63])
+length(mod.covar)
+# 64 total models
 
 
 OverdispersionConfig	<- c("eta1"=0, "eta2"=0)
@@ -401,20 +381,6 @@ OverdispersionConfig	<- c("eta1"=0, "eta2"=0)
 # We have no effects for vessel so this doesn't matter
 #OverdispersionConfig1 <- c("eta1"=1, "eta2"=0)
 #OverdispersionConfig2 <- c("eta1"=1, "eta2"=1)
-
-mod.eta <- list(OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig, OverdispersionConfig, OverdispersionConfig,
-                OverdispersionConfig)
-
-names(mod.eta) <- mod.covar
 
 #########################################################
 # Run model selection 2
@@ -433,69 +399,38 @@ scaled.covars <- data.frame(
   sst         = as.numeric(scaled.covars$sst),
   prey        = as.numeric(scaled.covars$prey),
   amo         = as.numeric(scaled.covars$amo),
-  nao         = as.numeric(scaled.covars$nao)
+  nao         = as.numeric(scaled.covars$nao),
+  slp         = as.numeric(scaled.covars$slp)
 )
 str(scaled.covars)
 
 dat <- scaled.covars
 
 # Define density covariate formulas
-Q_ikbase        <-   NULL
-Q_iksst         <- ~ sst
-Q_ikdepth       <- ~ depth
-Q_ikprey        <- ~ prey
-Q_iknao         <- ~ nao
-Q_ikamo         <- ~ amo
-
-Q_iksstdepth    <- ~ sst + depth
-Q_iksstprey     <- ~ sst + prey
-Q_iksstnao      <- ~ sst + nao
-Q_iksstamo      <- ~ sst + amo
-Q_ikdepthprey   <- ~ depth + prey
-Q_ikdepthnao    <- ~ depth + nao
-Q_ikdepthamo    <- ~ depth + amo
-Q_ikpreynao     <- ~ prey + nao
-Q_ikpreyamo     <- ~ prey + amo
-Q_iknaoamo      <- ~ nao + amo
-
-Q_iksstdepthprey <- ~ sst + depth + prey
-Q_iksstdepthnao  <- ~ sst + depth + nao
-Q_iksstdepthamo  <- ~ sst + depth + amo
-Q_iksstpreynao   <- ~ sst + prey + nao
-Q_iksstpreyamo   <- ~ sst + prey + amo
-Q_iksstnaoamo    <- ~ sst + nao + amo
-Q_ikdepthpreynao <- ~ depth + prey + nao
-Q_ikdepthpreyamo <- ~ depth + prey + amo
-Q_ikdepthnaoamo  <- ~ depth + nao + amo
-Q_ikpreynaoamo   <- ~ prey + nao + amo
-
-Q_iksstdepthpreynao <- ~ sst + depth + prey + nao
-Q_iksstdepthpreyamo <- ~ sst + depth + prey + amo
-Q_iksstpreynaoamo   <- ~ sst + prey + nao + amo
-Q_ikdepthpreynaoamo <- ~ depth + prey + nao + amo
-
-Q_ikall <- ~ sst + depth + prey + nao + amo
-
-
-# Pull formulas into list
-mod.Qik <- list(Q_ikbase,
-                Q_iksst, Q_ikdepth, Q_ikprey, Q_iknao, Q_ikamo,
-                Q_iksstdepth, Q_iksstprey, Q_iksstnao, Q_iksstamo,
-                Q_ikdepthprey, Q_ikdepthnao, Q_ikdepthamo,
-                Q_ikpreynao, Q_ikpreyamo,
-                Q_iknaoamo,
-                Q_iksstdepthprey, Q_iksstdepthnao, Q_iksstdepthamo, Q_iksstpreynao, Q_iksstpreyamo, Q_iksstnaoamo,
-                Q_ikdepthpreynao, Q_ikdepthpreyamo, Q_ikdepthnaoamo,
-                Q_ikpreynaoamo,
-                Q_iksstdepthpreynao, Q_iksstdepthpreyamo, Q_iksstpreynaoamo,
-                Q_ikdepthpreynaoamo,
-                Q_ikall)
-
-# Name formula list items
+covar.combo <- c('sst', 'depth', 'prey', 'nao', 'amo', 'slp')
+covar.combo <- do.call("c", lapply(seq_along(covar.combo), 
+                                   function(i) combn(covar.combo, i, FUN = list)))
+for(i in 1:length(covar.combo)){
+  temp <- covar.combo[[i]]
+  use <- length(temp)
+  temp2 <- paste0( "~ ", temp[[1]])
+  
+  if(use > 1){
+    for(j in 2:use){
+      temp2 <- paste0(temp2, " + ", temp[[j]])
+    }
+  }
+  
+  covar.combo[[i]] <- as.formula(temp2)
+  #rm(temp, use, temp2)
+}
+base.mod <- as.data.frame(NULL)
+mod.Qik <- c(list(base.mod), covar.combo)
 names(mod.Qik) <- mod.covar
 
 # Loop through density covariate options
-for(i in 15:length(mod.covar)) {
+for(i in 2:length(mod.covar)) {
+  message(names(mod.Qik)[i])
   # Define name of model
   name <- paste0(mod.covar[i])
   # Name working directory
@@ -504,11 +439,17 @@ for(i in 15:length(mod.covar)) {
   if(!dir.exists(working_dir)) {
     dir.create(working_dir)
   }
+  
+  if("parameter_estimates.txt" %in% list.files(working_dir)){
+    print(paste0('Run already completed for ', names(mod.Qik)[i], ' model'))
+    next()
+  }
+  
   # Set model options
   # winners of model selection 1
   use_anisotropy <- TRUE
   FieldConfig <- FieldConfig1
-  OverdispersionConfig <- mod.eta[[i]]
+  OverdispersionConfig <- OverdispersionConfig
   Q_ik <- mod.Qik[[i]]
   # Make settings
   settings <- make_settings( n_x = 200,
@@ -606,14 +547,9 @@ outdir <- here("covar_selection")
 # List folders in outer folder
 moddirs <- list.dirs(outdir) 
 # Remove top level folder
-moddirs <- moddirs[-c(1,3)]
+moddirs <- moddirs[-c(1)]
 # keep folder name
-modnames <- c('all', 'alleta11' ,'base', 'bathrug', 'bathrugsst', 'bathsst', 
-              'bathy', 
-              'cobble', 'eta10', 'eta11', 'gravel', 'mud', 'rugos', 'rugsst',
-              'sand', 'seds', 'sedsbath', 'sedsbathrug', 'sedsbathsst', 
-              'sedsbathssteta11',
-              'sedsrug', 'sedsrugsst', 'sedssst', 'sst')
+modnames <- mod.covar
 
 # function to apply extracting info
 getmodinfo <- function(d.name){
