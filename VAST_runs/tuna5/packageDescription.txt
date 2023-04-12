@@ -8,10 +8,10 @@ Authors@R: c(person(given = "James", family = "Thorson", role = c("aut", "cre"),
          "0000-0001-7415-1010")), person(given="Cole", family="Monnahan",
          role="ctb", email="Cole.Monnahan@noaa.gov") )
 Description: VAST is an R package for conducting spatio-temporal analysis of data
-         from multiple categories (species, sizes, etc.), and includes both spatial
-         and spatio-temporal variation in density for each category, with either
-         factor-analysis or autoregressive correlations among categories, with
-         derived calculation of abundance indices, center-of-gravity, and
+         from multiple categories (species, sizes, etc.), and includes both
+         spatial and spatio-temporal variation in density for each category, with
+         either factor-analysis or autoregressive correlations among categories,
+         with derived calculation of abundance indices, center-of-gravity, and
          area-occupied.
 Imports: abind, effects, INLA, stats, ThorsonUtilities, utils, remotes, devtools
 Depends: TMB (>= 1.8.0), FishStatsUtils (>= 2.12.1), R (>= 3.5.0)
@@ -58,8 +58,8 @@ Description: FishStatsUtils contains utilities (shared code and data) used by
          of ecological data.
 Imports: abind, alphahull, corpcor, corrplot, DHARMa, ecodist, fastcluster, INLA,
          plotrix, RANN, sf, raster, reshape2, rgdal, rnaturalearth,
-         rnaturalearthdata, seriation, shape, sp, stats, TMB (>= 1.8.0), TMBhelper
-         (>= 1.4.0), utils, viridisLite, spacetime, gstat
+         rnaturalearthdata, seriation, shape, sp, stats, TMB (>= 1.8.0),
+         TMBhelper (>= 1.4.0), utils, viridisLite, spacetime, gstat
 Depends: R (>= 3.5.0), units, marginaleffects
 Enhances: tidyr
 Suggests: testthat

@@ -47,6 +47,8 @@ Settings
 
 Major Changes from previous model:
 	- Included AMO and NAO as density covariates
+	- Switched depth from negative values to positive (I find it easier to make sense of, higher vals == deeper depths)
+	- Added partial effects plots
 
 Future
 	- Refine spatial grid: is it realistic to go all the way out to 200nmi or should I bring it inshore a bit
