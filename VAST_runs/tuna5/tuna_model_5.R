@@ -249,17 +249,43 @@ for(i in 1:length(form1)){
   
 }
 
-plot(predlist.1[[1]], xlab='scaled sst', main=NA)
-plot(predlist.2[[1]], xlab='scaled sst', main=NA)
+plot(predlist.1[[1]], xlab='scaled sst', main='Small')
+plot(predlist.2[[1]], xlab='scaled sst', main='Large')
 
-plot(predlist.1[[2]], xlab='scaled depth', main=NA)
-plot(predlist.2[[2]], xlab='scaled depth', main=NA)
+plot(predlist.1[[2]], xlab='scaled depth', main='Small')
+plot(predlist.2[[2]], xlab='scaled depth', main='Large')
 
-plot(predlist.1[[3]], xlab='scaled prey', main=NA)
-plot(predlist.2[[3]], xlab='scaled prey', main=NA)
+plot(predlist.1[[3]], xlab='scaled prey', main='Small')
+plot(predlist.2[[3]], xlab='scaled prey', main='Large')
 
-plot(predlist.1[[4]], xlab='scaled AMO', main=NA)
-plot(predlist.2[[4]], xlab='scaled AMO', main=NA)
+plot(predlist.1[[4]], xlab='scaled AMO', main='Small')
+plot(predlist.2[[4]], xlab='scaled AMO', main='Large')
 
-plot(predlist.1[[5]], xlab='scaled NAO', main=NA)
-plot(predlist.2[[5]], xlab='scaled NAO', main=NA)
+plot(predlist.1[[5]], xlab='scaled NAO', main='Small')
+plot(predlist.2[[5]], xlab='scaled NAO', main='Large')
+
+#### Partial effects with pdp ####
+library(pdp)
+
+# Make function to interface with pdp
+pred.fun = function( object, newdata ){
+  predict( x=object,
+           Lat_i = object$data_frame$Lat_i,
+           Lon_i = object$data_frame$Lon_i,
+           t_i = object$data_frame$t_i,
+           a_i = object$data_frame$a_i,
+           what = "P1_iz",
+           new_covariate_data = newdata,
+           do_checks = FALSE )
+}
+
+# Run partial
+units_options(allow_mixed = TRUE)
+Partial = partial( object = fit,
+                   pred.var = "sst",
+                   pred.fun = pred.fun,
+                   train = fit$covariate_data )
+
+# Make plot using ggplot2
+library(ggplot2)
+autoplot(Partial)
