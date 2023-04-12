@@ -17,6 +17,9 @@ sst <- read.csv(here('Data/Clean/AllYears_UpdatedSST.csv'))
 sst <- dplyr::select(sst, id, sst, sstsource)
 dep <- read.csv(here('Data/Clean/AllYears_UpdatedDepth.csv'))
 dep <- dplyr::select(dep, id, depth, depthsource)
+slp <- read.csv(here('Data/Clean/AllYears_IncludeSLP.csv'))
+slp <- dplyr::select(slp, id, slp)
+
 
 rm(dat.1993, dat.2021)
 
@@ -24,19 +27,66 @@ rm(dat.1993, dat.2021)
 head(dat)
 head(dep)
 head(sst)
+head(slp)
 
 length(unique(dat$id))
 length(unique(sst$id))
 length(unique(dep$id))
+length(unique(slp$id))
 
 # Merge data
 dat <- left_join(dat, sst, by=c('id'))
 dat <- left_join(dat, dep, by=c('id'))
+dat <- left_join(dat, slp, by=c('id'))
 
 # Check result
 head(dat)
 summary(dat$depth)
 summary(dat$sst)
+summary(dat$slp)
+
+# Merge with climate indices
+# Add NAO
+nao <- read.csv(here('Data/Climate_Indices/daily_nao.csv'))
+nao$date <- as.POSIXct(paste0(nao$year, '-',
+                              nao$month, '-',
+                              nao$day),
+                       format="%Y-%m-%d")
+
+nao <- nao %>% 
+  filter(year >= 1993 & year <=2021) %>% 
+  filter(month %in% seq(6, 10, 1))
+colnames(nao) <- c('year', 'month', 'day', 'nao', 'date')
+
+nao <- dplyr::select(nao, date, nao)
+head(nao)
+
+dat$date <- as.POSIXct(paste0(dat$year, '-',
+                              str_pad(dat$month, 2, 'left', '0'), '-',
+                              str_pad(dat$day, 2, 'left', '0')),
+                       format='%Y-%m-%d')
+
+dat <- merge(dat, nao, by=c('date'))
+head(dat)
+
+# Add AMO
+amo <- read.csv(here('Data/Climate_Indices/monthly_amo.csv'))
+amo <- amo %>% 
+  filter(Year >= 1993 & Year <=2021) %>% 
+  filter(Month %in% c('Jun', 'Jul', 'Aug', 'Sep', 'Oct'))
+amo$monthno <- match(amo$Month,month.abb)
+amo$yrmo <- paste0(amo$Year, '-', amo$monthno)
+amo <- dplyr::select(amo, yrmo, Value)
+colnames(amo) <- c('yrmo', 'amo')
+dat$yrmo <- paste0(dat$year, '-', dat$month)
+dat <- merge(dat, amo, by=c('yrmo'))
+head(dat)
+
+# Remove extraneous
+dat <- dplyr::select(dat, -yrmo, -date)
+
+# Add prey in another file
+# join_prey_vastoutput.R
 
 # Drop stations without depth information
 dat <- dat %>% 

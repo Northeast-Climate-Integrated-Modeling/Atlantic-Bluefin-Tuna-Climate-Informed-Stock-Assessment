@@ -143,7 +143,7 @@ for(i in 1:length(year.labs)
   tuna.sub <- sfheaders::sf_to_df(tuna.sub, fill=T)
   head(tuna.sub); colnames(tuna.sub)
   tuna.sub <- dplyr::select(tuna.sub, -sfg_id, -point_id)
-  colnames(tuna.sub) <- c(colnames(tuna.sub)[1:13], 'lon', 'lat')
+  colnames(tuna.sub) <- c(colnames(tuna.sub)[1:16], 'lon', 'lat')
   tuna.new <- rbind(tuna.new, tuna.sub)
 }
 
@@ -152,6 +152,10 @@ row.names(tuna.new) <- NULL
 head(tuna.new)
 summary(tuna.new$prey)
 # 16 NA values: those must be eliminated prior to VAST modeling.
+
+# Drop stations without depth information
+tuna.new <- tuna.new %>% 
+  drop_na(prey)
 
 write.csv(tuna.new, row.names = F, 
           here('Data/Clean/BFT_US_catch_VASTdata.csv'))
