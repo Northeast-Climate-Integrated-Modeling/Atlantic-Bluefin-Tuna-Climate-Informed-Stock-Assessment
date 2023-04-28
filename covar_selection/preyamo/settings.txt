@@ -39,12 +39,8 @@ $vars_to_correct
 [1] "Index_cyl" "Index_ctl"
 
 $Options
-           Calculate_Range 
-                      TRUE 
-  Calculate_effective_area 
-                      TRUE 
-treat_nonencounter_as_zero 
-                      TRUE 
+           Calculate_Range   Calculate_effective_area treat_nonencounter_as_zero 
+                      TRUE                       TRUE                       TRUE 
 
 $grid_size_km
 [1] 25

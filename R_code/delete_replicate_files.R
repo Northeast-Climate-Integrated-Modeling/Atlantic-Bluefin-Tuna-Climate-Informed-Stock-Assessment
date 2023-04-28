@@ -15,6 +15,7 @@ library(here)
 
 # Call flder and list files
 files <- list.files(here('covar_selection'))
+files <- files[-c(20, 21)]
 
 # Loop through subfolder
 for(i in 1:length(files)){

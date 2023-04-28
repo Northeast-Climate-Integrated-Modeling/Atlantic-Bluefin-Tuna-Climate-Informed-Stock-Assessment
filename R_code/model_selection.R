@@ -107,30 +107,6 @@ RhoConfig <- c(
 # Anisotropy
 use_anisotropy <- TRUE
 
-
-# Model selection 2 (covariates) options, FieldConfig default (all IID)
-# _base        
-
-# _sst, _depth, _prey, _nao, _amo, _slp
-
-# _sstdepth, _sstprey, _sstnao, _sstamo, _sstslp
-# _depthprey, _depthnao, _depthamo, _depthslp
-# _preynao, _preyamo, _preyslp
-# _naoamo, _naoslp
-# _amoslp
-
-
-# _sstdepthprey _sstdepthnao, _sstdepthamo, _sstpreynao, _sstpreyamo, _sstnaoamo, 
-# _sstdepthslp, 
-# _depthpreynao, _depthpreyamo, _depthnaoamo
-# _preynaoamo
-
-
-# _sstdepthpreynao, _sstdepthpreyamo, _sstpreynaoamo
-# _depthpreynaoamo
-
-# _all          
-
 OverdispersionConfig	<- c("eta1"=0, "eta2"=0)
 # eta0 = no vessel effects
 # eta1 = vessel effects on prey encounter rate
@@ -350,6 +326,9 @@ DT::datatable(modselect.200, rownames = FALSE,
 
 ###############################################################################
 # Model selection 2 setup: covariates
+
+# Model selection 2 (covariates) options, FieldConfig default (all IID)
+
 # Define covariate combinations
 covar.combo <- c('sst', 'depth', 'prey', 'nao', 'amo', 'slp')
 covar.combo <- do.call("c", lapply(seq_along(covar.combo), 
@@ -373,7 +352,6 @@ covar.combo <- do.call(rbind, covar.combo)
 mod.covar <- c("base", covar.combo[1:63])
 length(mod.covar)
 # 64 total models
-
 
 OverdispersionConfig	<- c("eta1"=0, "eta2"=0)
 # eta1 = vessel effects on prey encounter rate
@@ -445,6 +423,16 @@ for(i in 2:length(mod.covar)) {
     next()
   }
   
+  if("Kmeans_extrapolation-2000.RData" %notin% list.files(working_dir)){
+    file.copy(from = here('covar_selection/Kmeans_extrapolation-2000.RData'),
+              to = paste0(working_dir, '/', 'Kmeans_extrapolation-2000.RData'))
+  }
+  
+  if("Kmeans_knots-200.RData" %notin% list.files(working_dir)){
+    file.copy(from = here('covar_selection/Kmeans_knots-200.RData'),
+              to = paste0(working_dir, '/', 'Kmeans_knots-200.RData'))
+  }
+  
   # Set model options
   # winners of model selection 1
   use_anisotropy <- TRUE
@@ -478,6 +466,7 @@ for(i in 2:length(mod.covar)) {
     a_i = sel2[,'effort.unitless'],
     # Call covariate info
     X1_formula = mod.Qik[[i]],
+    X2_formula = mod.Qik[[i]],
     covariate_data = scaled.covars,
     # Call spatial
     input_grid=user_region,
@@ -486,6 +475,8 @@ for(i in 2:length(mod.covar)) {
     # Tell model to run
     run_model = TRUE)
 } # end covar loop
+
+# Model 49 (sst + prey +nao +amo) did not work
 
 # Loop through base options (no covars)
 for(i in c(1)) {
@@ -497,11 +488,26 @@ for(i in c(1)) {
   if(!dir.exists(working_dir)) {
     dir.create(working_dir)
   }
+  if("parameter_estimates.txt" %in% list.files(working_dir)){
+    print(paste0('Run already completed for ', names(mod.Qik)[i], ' model'))
+    next()
+  }
+  
+  if("Kmeans_extrapolation-2000.RData" %notin% list.files(working_dir)){
+    file.copy(from = here('covar_selection/Kmeans_extrapolation-2000.RData'),
+              to = paste0(working_dir, '/', 'Kmeans_extrapolation-2000.RData'))
+  }
+  
+  if("Kmeans_knots-200.RData" %notin% list.files(working_dir)){
+    file.copy(from = here('covar_selection/Kmeans_knots-200.RData'),
+              to = paste0(working_dir, '/', 'Kmeans_knots-200.RData'))
+  }
+  
   # Set model options
   # winners of model selection 1
   use_anisotropy <- TRUE
   FieldConfig <- FieldConfig1
-  OverdispersionConfig <- mod.eta[[i]]
+  OverdispersionConfig <- OverdispersionConfig
   Q_ik <- mod.Qik[[i]]
   # Make settings
   settings <- make_settings( n_x = 200,
@@ -549,7 +555,7 @@ moddirs <- list.dirs(outdir)
 # Remove top level folder
 moddirs <- moddirs[-c(1)]
 # keep folder name
-modnames <- mod.covar
+modnames <- mod.covar[-c(49)]
 
 # function to apply extracting info
 getmodinfo <- function(d.name){
