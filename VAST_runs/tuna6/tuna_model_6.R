@@ -37,6 +37,9 @@ dat <- dat %>%
 head(dat)
 summary(dat)
 
+# Remove years prior to 2002
+dat <- subset(dat, year >=2002)
+
 # Convert to sf for plotting
 dat_sf <- st_as_sf(dat, coords=c('lon', 'lat'))
 st_crs(dat_sf) <- 'EPSG:4326'
@@ -51,7 +54,7 @@ if(!dir.exists(working_dir)) {
 }
 setwd(working_dir)
 cat.labs <- c('Small', 'Large')
-year.labs <- seq(1993, 2021)
+year.labs <- seq(2002, 2021)
 
 # Make settings
 settings <- make_settings(
@@ -133,6 +136,13 @@ settings$ObsModel[1] <- 4
 settings$ObsModel[2] <- 1
 
 #settings$FieldConfig['Epsilon', 'Component_2'] <- 0
+library(splines)
+hab_formula<- ~ bs(sst, intercept = FALSE) +
+  bs(depth, intercept = FALSE) +
+  bs(slp, intercept = FALSE) +
+  bs(nao, intercept = FALSE) +
+  bs(amo, intercept = FALSE) +
+  bs(prey,intercept = FALSE)
 
 fit = fit_model( 
   # Set wd
@@ -152,8 +162,8 @@ fit = fit_model(
   c_iz = survs[,'Category'],
   
   # Call covariate info
-  X1_formula = ~ sst + depth + slp + nao + amo + prey,
-  X2_formula = ~ sst + depth + slp + nao + amo + prey, 
+  X1_formula = hab_formula,
+  X2_formula = hab_formula,
   covariate_data = scaled.covars,
   
   # Call spatial 
@@ -176,3 +186,45 @@ save.image('tuna_6.RData')
 
 plot( fit )
 beep(8)
+
+#### Visualize covariate response ####
+rm(list=setdiff(ls(), c("fit")))
+# Negate function
+'%notin%' <- function(x,y)!('%in%'(x,y))
+
+# Load functions
+source(here("R_code/utilities/vast_functions.R"))
+
+# Call parameter names
+params <- as.character(fit$X1_formula)
+params <- str_split(params, " +")
+params <- params[[2]]
+params <- params[params %notin% c("+", "degree", "=", "3,", "intercept", "FALSE)")]
+params <- str_split(params, ",")
+params <- do.call(rbind, params)
+params <- params[,1]
+str_detect("function(s)", fixed("("))
+params <- str_split(params, '\\(')
+params <- do.call(rbind, params)
+params <- params[params != 'bs']
+
+# Call category names
+catnames <- fit$category_names
+
+for(i in 1:length(catnames)){
+  vast_habcovs_effs<- get_vast_covariate_effects(vast_fit = fit, 
+                                                 params_plot = c(params), 
+                                                 params_plot_levels = 100, 
+                                                 effects_pad_values = c(), 
+                                                 nice_category_names = paste(catnames[i], "Bluefin Tuna"), 
+                                                 out_dir = here('VAST_runs/tuna6'),
+                                                 category_to_use = i,
+                                                 ncat = fit$data_list$n_c)
+  
+  # Warnings are...interesting....
+  vast_habcovs_plot<- plot_vast_covariate_effects(vast_covariate_effects = vast_habcovs_effs, 
+                                                  vast_fit = fit, 
+                                                  nice_category_names = paste(catnames[i], "Atlantic cod"),  
+                                                  out_dir = here('VAST_runs/tuna6'))
+  vast_habcovs_plot
+}
