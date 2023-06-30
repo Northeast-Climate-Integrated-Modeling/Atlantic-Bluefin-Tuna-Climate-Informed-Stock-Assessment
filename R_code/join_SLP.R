@@ -33,16 +33,15 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 
 #list of SLP dataframes
 SLPdfs <- list.files(here("Data/SLP/"), pattern = "*.rds")
+# Remove 2021
+SLPdfs <- SLPdfs[1:28]
 
 # Create empty tibble to fill
 stn_SLP <- tibble()
 
 # Load station data
 # Load data
-dat.1993 <- read.csv(here('Data/Clean/LPS_Pre_2002_Clean.csv'))
-dat.2021 <- read.csv(here('Data/Clean/LPS_Post_2002_Clean.csv'))
-stations <- rbind(dat.1993, dat.2021)
-rm(dat.1993, dat.2021)
+stations <- read.csv(here('Data/Clean/AllYears_Canada_UpdatedDepth.csv'))
 
 # Remove large category (it's fine, it's a spatial duplicate of small.)
 stations <- subset(stations, Size_class == 'small')
@@ -137,12 +136,16 @@ agg_stn_all_SLP <- left_join(stations, stn_SLP_merge)
 
 # Convert sf to df
 agg_stn_all_SLP <- sfheaders::sf_to_df(agg_stn_all_SLP, fill=T)
+head(agg_stn_all_SLP)
+
 agg_stn_all_SLP <- dplyr::select(agg_stn_all_SLP,
                                    id, year, month, day, x, y,
-                                   Size_class, catch, fhours, slp)
+                                   Size_class, catch, fhours,
+                                 sst, sstsource, bathy, slp)
 colnames(agg_stn_all_SLP) <- c('id', 'year', 'month', 'day', 'lon', 'lat',
-                                 'Size_class', 'catch', 'fhours', 'slp')
+                                 'Size_class', 'catch', 'fhours',
+                               'sst', 'sstsource', 'bathy', 'slp')
 
 # Save output
 write.csv(agg_stn_all_SLP, row.names = F,
-         here('Data/Clean/AllYears_IncludeSLP.csv'))
+         here('Data/Clean/AllYears_Canada_IncludeSLP.csv'))

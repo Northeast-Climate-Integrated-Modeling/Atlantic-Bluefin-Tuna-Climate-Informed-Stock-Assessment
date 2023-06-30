@@ -26,28 +26,28 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load station data from OISST-SST merge
-stations <- read.csv(here('Data/Clean/AllYears_UpdatedSST.csv'))
+stations <- read.csv(here('Data/Clean/AllYears_Canada_UpdatedSST.csv'))
 # Remember this is just station data, missing catch data from large category
 head(stations)
 
 # Load GEBCO 15 arc second bathy grid
-bathy_rast <- raster(here('Data/Bathy/gebco_2022_n46.0_s35.0_w-78.0_e-65.0.asc'))
+bathy_rast <- raster(here('Data/Bathy/gebco_2022_n50.0_s40.0_w-70.0_e-50.0.asc'))
 # Reproject to unprojected wgs84 lat-lon
 bathy_rast <- raster::projectRaster(bathy_rast, 
                                     crs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
 # Clip raster to NWAtlantic shapefie
-nwat <- readOGR(here('Data/GIS/NWAtlantic.shp'))
+nwat <- readOGR(here('Data/GIS/Combined_Bluefin2.shp'))
 nwat <- spTransform(nwat, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
 bathy_rast <- raster::mask(bathy_rast, nwat)
 plot(bathy_rast)
 
 # Clip out coast
-coast <- ecodata::coast
-coast <- st_transform(coast, crs="EPSG:4326")
-coast <- as(coast, 'Spatial')
-coast_rast <- raster::mask(bathy_rast, coast)
-plot(coast_rast)
+# coast <- ecodata::coast
+# coast <- st_transform(coast, crs="EPSG:4326")
+# coast <- as(coast, 'Spatial')
+# coast_rast <- raster::mask(bathy_rast, coast)
+# plot(coast_rast)
 
 for(i in 1:length(bathy_rast@data@values)){
   if(!is.na(bathy_rast@data@values[i]) & !is.na(coast_rast@data@values[i])){
@@ -208,6 +208,9 @@ stations <- dplyr::select(stations,
 colnames(stations) <- c(colnames(stations[1:11]), 'depth', 'depthsource')
 head(stations)
 
+# Remove NA output
+stations <- stations[!is.na(stations$bathy),]
+
 # Save output
 write.csv(stations, row.names = F, 
-          here('Data/Clean/AllYears_UpdatedDepth.csv'))
+          here('Data/Clean/AllYears_Canada_UpdatedDepth.csv'))
