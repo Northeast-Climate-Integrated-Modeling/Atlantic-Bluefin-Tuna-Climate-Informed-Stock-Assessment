@@ -33,16 +33,21 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 
 #list of SST dataframes
 SSTdfs <- list.files(here("Data/OISST/"), pattern = "*.rds")
+# Remove 2021 (no 2021 canadian data)
+SSTdfs <- SSTdfs[1:28]
 
 # Create empty tibble to fill
 stn_OISST <- tibble()
 
 # Load station data
 # Load data
-dat.1993 <- read.csv(here('Data/Clean/LPS_Pre_2002_Clean.csv'))
-dat.2021 <- read.csv(here('Data/Clean/LPS_Post_2002_Clean.csv'))
-stations <- rbind(dat.1993, dat.2021)
-rm(dat.1993, dat.2021)
+stations <- read.csv(here('Data/Clean/Canada_landings.csv'))
+# Confirm all have dats
+stations[is.na(stations$year),]
+stations[is.na(stations$month),]
+stations[is.na(stations$day),]
+# Ah! Problem. Not sure how this happened, but the correct day is the 8th.
+stations$day[is.na(stations$day)] <- 8
 
 # Remove large category (it's fine, it's a spatial duplicate of small.)
 stations <- subset(stations, Size_class == 'small')
@@ -124,7 +129,7 @@ stn_OISST_merge <- stn_OISST %>%
                 day = day.x,
                 yrmody = yrmody.x,
                 oisst = sst.y) %>%
-  dplyr::select(id, oisst) %>%
+  dplyr::select(trip, oisst) %>%
   sf::st_drop_geometry()
 
 # Merge
@@ -141,7 +146,7 @@ comparesst <- agg_stn_all_OISST %>%
   na.omit()
 
 # Set sequence of years to plot
-yearstoplot <- seq(1993, 2021)
+yearstoplot <- seq(1992, 2020)
 
 # Plot comparisons, check for adhesion to 1:1 line
 for(i in 1:length(yearstoplot)){
@@ -166,14 +171,15 @@ ggplot2::ggplot(comparesst, aes(x=sst, y=oisst, col=year)) +
   labs(x = "Field surface temperature (deg C)",
        y = "OISST (deg C)") +
   theme_bw() 
-# Looks like we have mostly good field data, with the notable exception of 1993
+# Looks like we have mostly good field data. 
+# Field reporrs typically colder than OISST reports.
 
 # Map annual shifts
 mapsst <- agg_stn_all_OISST %>%
   #dplyr::filter(YEAR>1981) %>%
   #dplyr::filter(SEASON == 'FALL' | SEASON=='SPRING') %>% 
   dplyr::mutate(sstdiff = sst-oisst) %>%
-  dplyr::select(id, year, month, sst, oisst, sstdiff) 
+  dplyr::select(trip, year, month, sst, oisst, sstdiff) 
 
 # Set CRS
 st_crs(mapsst) <- "EPSG:4326"
@@ -200,7 +206,7 @@ yrmap <- function(mapyr){
 }
 
 # Plot SST difference in space for every year
-for(mapyr in 1993:2021){
+for(mapyr in 1992:2020){
   print(yrmap(mapyr)) 
 }
 
@@ -208,10 +214,10 @@ for(mapyr in 1993:2021){
 # If field SST is more than 2 deg different from OISST, use OISST
 agg_stn_all_OISST$sstdiff <- agg_stn_all_OISST$sst - agg_stn_all_OISST$oisst
 summary(agg_stn_all_OISST$sstdiff)
-hist(agg_stn_all_OISST$sstdiff, breaks=seq(-24, 14, 1))
+hist(agg_stn_all_OISST$sstdiff, breaks=seq(-14, 14, 1))
 nrow(agg_stn_all_OISST[!is.na(agg_stn_all_OISST$sstdiff) & abs(agg_stn_all_OISST$sstdiff) <=2.0,]) / 
   nrow(agg_stn_all_OISST[!is.na(agg_stn_all_OISST$sstdiff),]) * 100
-# 85% of our observations with both values are within 2 deg.
+# 64% of our observations with both values are within 2 deg.
 
 # Call new columns
 agg_stn_all_OISST$temp <- NA
@@ -232,17 +238,17 @@ for(i in 1:nrow(agg_stn_all_OISST)){
 }
 # Check how often we are substituting field data for OISST
 barplot(t(prop.table(table(agg_stn_all_OISST$year, agg_stn_all_OISST$sstsource), margin=1)), legend=T)
-# Most years are more than 70% populated by field SsT data
+# Most years are more than 70% populated by OISST data
 
 # Convert sf to df
 agg_stn_all_OISST <- sfheaders::sf_to_df(agg_stn_all_OISST, fill=T)
 agg_stn_all_OISST <- dplyr::select(agg_stn_all_OISST,
-                                   id, year, month, day, x, y,
-                                   Size_class, catch, fhours, depth, temp, sstsource)
+                                   trip, year, month, day, x, y,
+                                   Size_class, catch, fhours, temp, sstsource)
 colnames(agg_stn_all_OISST) <- c('id', 'year', 'month', 'day', 'lon', 'lat',
-                                 'Size_class', 'catch', 'fhours', 'depth', 'sst',
+                                 'Size_class', 'catch', 'fhours', 'sst',
                                  'sstsource')
 
 # Save output
-#write.csv(agg_stn_all_OISST, row.names = F, 
-#          here('Data/Clean/AllYears_UpdatedSST.csv'))
+write.csv(agg_stn_all_OISST, row.names = F, 
+          here('Data/Clean/AllYears_Canada_UpdatedSST.csv'))
