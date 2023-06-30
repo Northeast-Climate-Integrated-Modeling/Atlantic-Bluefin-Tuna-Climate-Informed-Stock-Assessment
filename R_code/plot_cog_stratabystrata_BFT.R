@@ -186,33 +186,33 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
     
     # Plot northing
     northing <- ggplot(SD_plotting) +
-      geom_line(aes(x=Year, y=northing), col='#00BFC4', lwd=1) +
+      geom_line(aes(x=Year, y=northing), col='#F8766D', lwd=1) +
       geom_ribbon(aes(ymin=northing-n.sd,
                      ymax=northing+n.sd,
                      x=Year),
-                  fill=alpha('#00BFC4', 0.2)) +
+                  fill=alpha('#F8766D', 0.2)) +
       #ylim(c(4600,4825)) +
       ylab("Northing (km)") +
       xlab("")
     
     # Plot easting
     easting <- ggplot(SD_plotting) +
-      geom_line(aes(x=Year, y=easting), col='#00BFC4', lwd=1) +
+      geom_line(aes(x=Year, y=easting), col='#F8766D', lwd=1) +
       geom_ribbon(aes(ymin=easting-e.sd,
                       ymax=easting+e.sd,
                       x=Year),
-                  fill=alpha('#00BFC4', 0.2)) +
+                  fill=alpha('#F8766D', 0.2)) +
       #ylim(c(300, 700)) +
       ylab("Easting (km)")+
       xlab("")
     
     # Plot effective area occupied
-    arr.occ <- ggplot(SD_plotting.spring) +
-      geom_line(aes(x=Year, y=area.occ), col='#00BFC4',lwd=1) +
+    arr.occ <- ggplot(SD_plotting) +
+      geom_line(aes(x=Year, y=area.occ), col='#F8766D',lwd=1) +
       geom_ribbon(aes(ymin=area.occ-sd.err,
                       ymax=area.occ+sd.err,
                       x=Year),
-                  fill='#00BFC4',
+                  fill='#F8766D',
                   alpha=0.2) +
       #ylim(c(-5000, 75000)) +
       ylab(bquote("Area Occupied km "^2))
@@ -224,11 +224,9 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
     SD_plotting.cog <- size.list.cog[[i]]
     SD_plotting.cog <- as.data.frame(SD_plotting.cog[,,])
     colnames(SD_plotting.cog) <- c('easting', 'northing', 'e.sd', 'n.sd')
-    SD_plotting.cog$YearSeas <- year.labs
+    SD_plotting.cog$Year <- year.labs
     SD_plotting.cog$easting <- SD_plotting.cog$easting * 1000
     SD_plotting.cog$northing <- SD_plotting.cog$northing * 1000
-    SD_plotting.cog <- separate(SD_plotting.cog, YearSeas, 
-                                into = c("Year", "Season"), sep = " (?=[^ ]+$)")
     SD_plotting.cog$Year <- as.numeric(SD_plotting.cog$Year)
     
     # Convert to sf for plotting
@@ -236,7 +234,7 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
     st_crs(SD_plotting) <- "EPSG:32619"
     
     # Spring
-    SD_plotting.spring <- subset(SD_plotting, Season =='Spring')
+    SD_plotting.spring <- SD_plotting
     points <- st_cast(st_geometry(SD_plotting.spring), "POINT") 
     # Number of total linestrings to be created
     n <- length(points) - 1
@@ -251,8 +249,11 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
     t.spring <- st_multilinestring(do.call("rbind", linestrings))
     t.spring <-  nngeo::st_segments(t.spring)
     t.spring <- st_sf(t.spring)
-    t.spring$Year <- seq(1982, 2020, 1)
+    t.spring$Year <- seq(1993, 2019, 1)
     st_crs(t.spring) <- "EPSG:32619"
+    
+    SD_plotting.spring <- st_transform(SD_plotting.spring, st_crs(coast))
+    t.spring <- st_transform(t.spring, st_crs(coast))
     
     # Plot
     spring.vis <- ggplot() +
@@ -262,9 +263,9 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
       new_scale_color() +
       geom_sf(data=SD_plotting.spring, aes(col=Year), pch=19, cex=0.5) +
       scale_color_continuous(
-        limits = c(1982,2021), 
-        breaks = c(1982,1990, 2000, 2010, 2021),
-        labels = c('1982', ' ', ' ', ' ', '2021'),
+        limits = c(1993,2021), 
+        breaks = c(1993, 2000, 2010, 2021),
+        labels = c('1982', ' ', ' ',  '2021'),
         guide = guide_colourbar(nbin = 100, draw.ulim = FALSE, draw.llim = FALSE)
       )+
       geom_sf(data=t.spring, aes(col=Year)) +
@@ -279,89 +280,6 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
     ggsave(spring,
            filename=paste0(here(), "/Plot_output_3/location.info.",
                            category_names[i], ".spring.US.png"),
-           width = 10, height = 8, units='in')
-    
-    # Both Fall
-    SD_plotting.fall <- merge(fall.cog, fall.eao, by=c("Year", "Season"))
-    
-    # Plot northing
-    northing <- ggplot(SD_plotting.fall) +
-      geom_line(aes(x=Year, y=northing), col='#F8766D', lwd=1) +
-      geom_ribbon(aes(ymin=northing-n.sd,
-                      ymax=northing+n.sd,
-                      x=Year),
-                  fill=alpha('#F8766D', 0.2)) +
-      #ylim(c(4600,4825)) +
-      ylab(" ") +
-      xlab("")
-    
-    # Plot easting
-    easting <- ggplot(SD_plotting.fall) +
-      geom_line(aes(x=Year, y=easting), col='#F8766D', lwd=1) +
-      geom_ribbon(aes(ymin=easting-e.sd,
-                      ymax=easting+e.sd,
-                      x=Year),
-                  fill=alpha('#F8766D', 0.2)) +
-      #ylim(c(300, 700)) +
-      ylab(" ")+
-      xlab("")
-    
-    # Plot effective area occupied
-    arr.occ <- ggplot(SD_plotting.fall) +
-      geom_line(aes(x=Year, y=area.occ), col='#F8766D', lwd=1) +
-      geom_ribbon(aes(ymin=area.occ-sd.err,
-                      ymax=area.occ+sd.err,
-                      x=Year),
-                  fill=alpha('#F8766D', 0.2)) +
-      #ylim(c(-5000, 75000)) +
-      ylab(" ")
-    
-    # Arrange to plot
-    fall.lines <- ggarrange(northing, easting, arr.occ, nrow=3)
-
-    # Fall
-    SD_plotting.fall <- subset(SD_plotting, Season =='Fall')
-    points <- st_cast(st_geometry(SD_plotting.fall), "POINT") 
-    # Number of total linestrings to be created
-    n <- length(points) - 1
-    # Build linestrings
-    linestrings <- lapply(X = 1:n, FUN = function(x) {
-      
-      pair <- st_combine(c(points[x], points[x + 1]))
-      line <- st_cast(pair, "LINESTRING")
-      return(line)
-      
-    })
-    # Split to individual linestrings, associate year
-    t.fall <- st_multilinestring(do.call("rbind", linestrings))
-    t.fall <-  nngeo::st_segments(t.fall)
-    t.fall <- st_sf(t.fall)
-    t.fall$Year <- seq(1982, 2020, 1)
-    st_crs(t.fall) <- "EPSG:32619"
-    # Plot
-    fall.vis <- ggplot() +
-      geom_sf(data=coast, fill='gray') +
-      geom_sf(data=stocks, aes(col=STOCK), fill='transparent', lwd=0.25) +
-      guides(col=guide_legend(title="Stock", nrow=2,byrow=TRUE)) +
-      new_scale_color() +
-      geom_sf(data=SD_plotting.fall, aes(col=Year), pch=19, cex=0.5) +
-      scale_color_continuous(
-        limits = c(1982,2021), 
-        breaks = c(1982,1990, 2000, 2010, 2021),
-        labels = c('1982', ' ', ' ', ' ', '2021'),
-        guide = guide_colourbar(nbin = 100, draw.ulim = FALSE, draw.llim = FALSE)
-      )+
-      geom_sf(data=t.fall, aes(col=Year)) +
-      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == 'US',])[1], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[3]),
-               ylim=c(st_bbox(stocks[stocks$STOCK == 'US',])[2], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[4])) +
-      xlab("Longitude") + ylab("Latitude")
-    
-    fall <- ggarrange(fall.vis, fall.lines, ncol=2) + bgcolor("white") 
-    ggsave(fall,
-           filename=paste0(here(), "/Plot_output_3/location.info.",
-                           category_names[i], ".fall.US.png"),
            width = 10, height = 8, units='in')
 }
 

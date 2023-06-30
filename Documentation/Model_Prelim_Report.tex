@@ -5,19 +5,16 @@
 \documentclass[
 ]{article}
 \usepackage{amsmath,amssymb}
+\usepackage{lmodern}
 \usepackage{iftex}
 \ifPDFTeX
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
   \usepackage{textcomp} % provide euro and other symbols
 \else % if luatex or xetex
-  \usepackage{unicode-math} % this also loads fontspec
+  \usepackage{unicode-math}
   \defaultfontfeatures{Scale=MatchLowercase}
   \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
-\fi
-\usepackage{lmodern}
-\ifPDFTeX\else
-  % xetex/luatex font selection
 \fi
 % Use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
@@ -64,109 +61,29 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setcounter{secnumdepth}{5}
-% !TEX TS-program = LuaLaTeX
-%------------------------------- Preamble ------------------------------------------------------
-%\documentclass[12pt,a4paper,english]{article} % document type and language
-
-\usepackage{babel}   			% multi-language support
-\usepackage{xcolor}			% text color
-\usepackage{float}   				% floats
-\usepackage{url}     				% urls
-\usepackage{fontspec} 			% font
-		\setmainfont{Calibri}
-\usepackage{geometry} 		% margins
-\usepackage{titlesec}			% section font size
-		\titleformat*{\section}{\Large\bfseries}
-		\titleformat*{\subsection}{\normalsize\itshape\bfseries}
-\usepackage{polyglossia}		% Indent first paragraph in section
-		\setmainlanguage{english}
-		%\PolyglossiaSetup{english}{indentfirst=true} % wrong
-		\SetLanguageKeys{english}{indentfirst=true}
-\usepackage{titlesec}			% Format titles
-		\titlespacing\section{0pt}{2pt plus 1pt minus 1pt}{0pt plus 1pt minus 1pt}
-		\titlespacing\subsection{0pt}{2pt plus 1pt minus 1pt}{0pt plus 1pt minus 1pt}
-		\titlespacing\subsubsection{0pt}{2pt plus 1pt minus 1pt}{0pt plus 1pt minus 1pt}
-%\usepackage[none]{hyphenat}	% prevent word breaks
-
-
-% Set up the fonts
-%\usepackage[urw-palatino]{mathdesign}
-%\usepackage[T1]{fontenc}
-
-
-% Set the language for 508
-\usepackage{hyperref}
-\hypersetup{
-  pdftitle = {title},
-  pdflang = en-US}
-
-% Add accessibility support from http://www.richschwinn.com/accessibility
-\RequirePackage{accsupp}
-\RequirePackage{pdfcomment}
-\newcommand{\AccTool}[2]{\BeginAccSupp{method=pdfstringdef,unicode,Alt={{#1}}}\pdftooltip{{#2}}{{#1}}\EndAccSupp{}}
-
-
-% Set up the headers and footers
-\usepackage{graphicx}
-\usepackage{fancyhdr}
-\usepackage{ifthen}
-%\usepackage{everypage-1x}
-\usepackage{float}
-%\usepackage{subfig}
-%\usepackage{subcaption}
-
-% Avoid struggling over figure and table float in Rmarkdown
-\let\origfigure\figure
-\let\endorigfigure\endfigure
-\renewenvironment{figure}[1][2] {
-    \expandafter\origfigure\expandafter[H]
-} {
-    \endorigfigure
-}
-
-\let\origtable\table
-\let\endorigtable\endtable
-\renewenvironment{table}[1][2] {
-    \expandafter\origtable\expandafter[H]
-} {
-    \endorigtable
-}
-
-% First page has the large title and NOAA logo
-%\pagestyle{fancy}
-%\fancyhf{}
-%\setlength\headheight{40pt}
-%\fancyheadoffset[L]{0.5cm}
-%\cfoot{\thepage}
-%
-%\fancyheadinit{%
-%   \ifthenelse{\value{page}=4}%
-%      {\fancyhead[R]{\includegraphics[width=40pt]{images/NOAA_logo.png} \\ \textsf{\emph{March 17, 2022}}}
-%       \fancyhead[L]{\textsf{\LARGE State of the Ecosystem 2022: Mid-Atlantic}}
-%      }%
-%      {\fancyhead[R]{}
-%       \fancyhead[L]{\textsf{\emph{State of the Ecosystem 2022: Mid-Atlantic}}}
-%      }
-%}
-
-
-
-\renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\footrulewidth}{0pt}
-
-% Make caption fonts a bit smaller
-\usepackage[font={small}]{caption}
-
-
-% Change section labels to san serif
-\usepackage{sectsty}
-\allsectionsfont{\normalfont\sffamily\bfseries}
-
-%\usepackage{lineno}
-%\linenumbers
-
-\usepackage{setspace}
-\doublespacing
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newlength{\cslentryspacingunit} % times entry-spacing
+\setlength{\cslentryspacingunit}{\parskip}
+\newenvironment{CSLReferences}[2] % #1 hanging-ident, #2 entry spacing
+ {% don't indent paragraphs
+  \setlength{\parindent}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+  \let\oldpar\par
+  \def\par{\hangindent=\cslhangindent\oldpar}
+  \fi
+  % set entry spacing
+  \setlength{\parskip}{#2\cslentryspacingunit}
+ }%
+ {}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
 \usepackage{setspace}\onehalfspacing
 \usepackage{float}
 \usepackage{caption}
@@ -190,7 +107,7 @@
 \fi
 \IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
-\urlstyle{same}
+\urlstyle{same} % disable monospaced font for URLs
 \hypersetup{
   pdftitle={Bluefin Combined Index Model V1},
   pdfauthor={Katie Lankowicz},
@@ -217,8 +134,8 @@ This project will create a joint CPUE index for BFT across American and Canadian
 
 The remainder of this document will be used to report progress on cleaning and merging American and Canadian BFT catch data and making VAST model structure decisions.
 
-\hypertarget{bft-data-requirements}{%
-\section{BFT data requirements}\label{bft-data-requirements}}
+\hypertarget{bft-data}{%
+\section{BFT data}\label{bft-data}}
 
 BFT data from American and Canadian fisheries are in variable formats and need to be heavily manipulated prior to merging. The goal is to create a dataframe where each row represents a sampling event. The following variables are desired for each sampling event:
 
@@ -257,7 +174,29 @@ BFT data from American and Canadian fisheries are in variable formats and need t
 
 Currently, the model's temporal domain is 1993 - 2020. Though BFT total catch data were recorded prior to 1993, information to determine the size of each fish was not reliably recorded. The final model will include indices for multiple BFT size classes, and so data without associated length or weight information is not useful. The temporal domain currently ends at 2020 because that is the most recent year with Canadian catch data. American catch data ends at 2021. The temporal domain could be extended with new information.
 
-The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included.
+The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included. The model will estimate indices of abundance within both of the spatial strata-- US EEZ waters and Canadian EEZ waters.
+
+\begin{verbatim}
+## Reading layer `NWAtlantic' from data source 
+##   `C:\Users\klankowicz\Documents\GitHub\Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment\Data\GIS\NWAtlantic.shp' 
+##   using driver `ESRI Shapefile'
+## Simple feature collection with 1 feature and 1 field
+## Geometry type: POLYGON
+## Dimension:     XY
+## Bounding box:  xmin: -8460792 ymin: 4196772 xmax: -7313632 ymax: 5648546
+## Projected CRS: WGS 84 / Pseudo-Mercator
+\end{verbatim}
+
+\begin{verbatim}
+## Reading layer `CanadaEEZ' from data source 
+##   `C:\Users\klankowicz\Documents\GitHub\Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment\Data\GIS\CanadaEEZ.shp' 
+##   using driver `ESRI Shapefile'
+## Simple feature collection with 1 feature and 4 fields
+## Geometry type: POLYGON
+## Dimension:     XY
+## Bounding box:  xmin: -7541061 ymin: 4871320 xmax: -6131963 ymax: 5909353
+## Projected CRS: WGS 84 / Pseudo-Mercator
+\end{verbatim}
 
 \begin{figure}
 \centering
@@ -292,6 +231,11 @@ Giant & Large & 81+ in & 60+ in & 310+ lbs\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\hypertarget{environmental-covariates}{%
+\subsection{Environmental covariates}\label{environmental-covariates}}
+
+Several ocean climate variables and static properties are expected to cause shifts in BFT distribution. For this model, we will include sea surface temperature, sea level pressure, basin-wide daily NAO, basin-wide monthly AMO, and water depth. When building the VAST model, these will be called density covariates.
 
 \hypertarget{us-bft-recreational-catch}{%
 \subsection{US BFT Recreational Catch}\label{us-bft-recreational-catch}}
@@ -371,19 +315,119 @@ Unknown & 2 & 1993 & 10 & 2 & 8 & 2 & 15.77 & -378.1 & 102585 & 0.9867340 & -0.2
 \caption{\label{fig:canadianplot}Fig. 3: Spatial distribution of Canadian commercial catch}
 \end{figure}
 
-\hypertarget{model-structure}{%
-\section{Model structure}\label{model-structure}}
+\hypertarget{data-needs}{%
+\subsection{Data needs}\label{data-needs}}
+
+There are a few environmental variables that have not yet been incorporated into the resulting data. I have created a VAST model of prey distribution based on NOAA herring, menhaden, and mackerel observer data. However, these data do not have 0 values (an important part of a VAST model) and do not have any coverage in Canadian waters. It would be best to fill out the data from other sources to get better models of prey spatiotemporal density.
+
+Chloropyll was noted as a potential covariate for BFT distribution, but I have not yet found a data source that has complete coverage in our spatial and temporal domains. VAST models cannot tolerate missing values for density covariates, and the many gaps in MODIS data caused by cloud coverage are currently preventing me from including chlorophyll data. Suggestions are welcomed.
+
+Wind direction and velocity have not yet been incorporated. Ideally, we would have information on the wind direction and velocity at the exact space and time of each tuna observation, though I could extract this information from data with larger spatial grain. I have spent less time looking for a source for these data. Suggestions are welcomed.
+
+\hypertarget{vast}{%
+\section{VAST}\label{vast}}
+
+VAST models were used to estimate BFT spatial density over time and create joint indices of abundance using all available American and Canadian catch data. VAST is a framework for implementing spatial delta-generalized linear mixed models (delta-GLMM) and can be manipulated to provide estimates for multiple categories of interest and spatial strata Thorson (\protect\hyperlink{ref-thorson_2019}{2019}). It is structured to utilize two linear predictors; the first linear predictor estimates encounter probability, and the second linear predictor estimates catch rates. The first linear predictor can be represented as
+
+\[\rho_1(i) = \beta_1(c_i, t_i) + \omega_1^*(s_i, c_i) + \varepsilon_1^*(s_i, c_i, t_i) + \eta_1(v_i, c_i) + \nu_1(c_i, t_i)\]
+
+where \(\rho_1(i)\) is the predictor for observation \emph{i} for category \(c_i\) at location \(s_i\) and time \(t_i\). \(\beta_1(c_i, t_i)\) represents temporal variation for each category and time, \(\omega_i(s_i, c_i)\) represents spatial variation for each location and category, \(\varepsilon_1(s_i, c_i, t_i)\) represents spatiotemporal variation for each location, category, and time, \(\eta_1(v_i, c_i)\) represents vessel effects for each vessel and category, and \(\nu_1(c_i, t_i)\) represents the effect of density covariates for each category and time. The second linear predictor is structured the same way. Both linear predictors incorporate fixed and random effects, and spatial and spatiotemporal variation are approximated as Gaussian Markov random fields Thorson (\protect\hyperlink{ref-thorson_2019}{2019}).
+
+Implementation of VAST models requires several structural and data inclusion decisions, as outlined in Thorson (\protect\hyperlink{ref-thorson_2019}{2019}). Decisions used in this effort will be discussed in the following subsections.
 
 \hypertarget{response-variable-and-effort-adjustment}{%
 \subsection{Response variable and effort adjustment}\label{response-variable-and-effort-adjustment}}
 
-\hypertarget{spatial-temporal-spatio-temporal-variation}{%
-\subsection{Spatial, Temporal, Spatio-temporal variation}\label{spatial-temporal-spatio-temporal-variation}}
+Our data provide information on the number of fish of each size group caught during each fishing trip, as well as the number of hours fished on that trip. Gear type varies and this likely affects catchability and actual effort. For now, catch will be adjusted for effort by dividing the catch by number of hours fished.
 
-\hypertarget{density-covariates}{%
-\subsection{Density covariates}\label{density-covariates}}
+VAST models require an input for effort to scale the response variable. For most fishery-independent surveys, this input would be similar to area swept. For this fishery-dependent dataset utilizing multiple gears, we have already accounted for effort in our manipulation of the response variable. Therefore, we will assign effor to be a unitless 1 for all observations.
+
+\hypertarget{density-and-catchability-covariates}{%
+\subsection{Density and Catchability Covariates}\label{density-and-catchability-covariates}}
+
+VAST allows for the effects of both density and catchability covariates to be included in modeling efforts. Catchability covariates are processes one would expect to affect the ability to observe the target organism without necessarily affecting the distribution of the organism. Density covariates are processes that directly affect the distribution of the target organism, regardless of ability to observe it. Both covariates affect the catch rate of the target organism, but only density covariates are used to predict target organism density within the spatial domain. Therefore, VAST ``controls for'' catchability covariates and ``conditions on'' density covariates. VAST is unable to distinguish whether potential covariates should be treated as catchability or density covariates; this must be decided with theoretical insight from an analyst.
+
+In this model, we will utilize the environmental covariates and basin-scale climate indices as density covariates. Density covariates were chosen after a model selection process to determine their utility to describe patterns in BFT spatiotemporal density. Currently, a simple linear model is used to describe the effects of these covariates on BFT CPUE. In the future, other models will be tested; it is likely that the best model will be more fluid, like a generalized additive model using polynomial splines.
+
+We will not explicitly include catchability covariates, but wil allow for variation in catchability between the American and Canadian fisheries by including them as ``vessel effects.''
+
+\hypertarget{error-structure}{%
+\subsection{Error structure}\label{error-structure}}
+
+As recommended by model developers for adjusted-effort models, a delta-lognormal distribution was chosen for the first linear predictor and an alternative ``Poisson-link delta-model''was chosen for the second linear predictor.
+
+\hypertarget{spatial-temporal-and-spatiotemporal-effects}{%
+\subsection{Spatial, temporal, and spatiotemporal effects}\label{spatial-temporal-and-spatiotemporal-effects}}
+
+Spatial, temporal, and spatiotemporal autocorrelation can be included in both linear predictors. A model selection process was used to justify the use of spatial and spatiotemporal random effects in the first and second linear predictors. The intercept for each linear predictor was defined as a fixed effect for each time step-- this ensures independent estimates of abundance for each time step, which is most appropriate for creating abundance indices (\protect\hyperlink{ref-thorson_2019}{Thorson 2019}). Instead, a temporal component was estimated for the spatiotemporal components in both linear predictors. This is recommended for indices generated by multiple data sources that do not necessarily sample the same locations in every time step (\protect\hyperlink{ref-thorson_2019}{Thorson 2019}). Without this estimation, unrealistic ``hot spots'' may develop or be carried through the time series when this is inappropriate. The use of a temporal component for spatiotemporal components can also help interpolate density in unsampled time steps (\protect\hyperlink{ref-thorson_2019}{Thorson 2019}). In this model, temporal correlation of these spatiotemporal variations was set as an AR1 process.
 
 \hypertarget{preliminary-results}{%
 \section{Preliminary results}\label{preliminary-results}}
+
+\hypertarget{joint-indices-of-abundance}{%
+\subsection{Joint indices of abundance}\label{joint-indices-of-abundance}}
+
+\begin{figure}
+\centering
+\includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/index.png}
+\caption{Fig. 4: Joint indices of abundance}
+\end{figure}
+
+\hypertarget{maps-of-spatial-density}{%
+\subsection{Maps of spatial density}\label{maps-of-spatial-density}}
+
+\begin{figure}
+\centering
+\includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png}
+\caption{Fig. 5:Small cod spatio-temporal density}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png}
+\caption{Fig. 6: Large cod spatio-temporal density}
+\end{figure}
+
+\hypertarget{spatial-metrics-and-range-shifts}{%
+\subsection{Spatial metrics and range shifts}\label{spatial-metrics-and-range-shifts}}
+
+The model needs to be run once for each spatial strata in order to generate spatial metrics for each strata. As of right now, it takes approximately 9 hours to run on a laptop. Spatial metrics have only been generated for the Canadian stock.
+
+\begin{figure}
+\centering
+\includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Small.spring.Canada.png}
+\caption{Fig. 7: Spatial metrics for small BFT in Canadian EEZ}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png}
+\caption{Fig. 8: Spatial metrics for large BFT in Canadian EEZ}
+\end{figure}
+
+It is interesting that the center of gravity for the small BFT stock in Canadian waters is typically further offshore than the large BFT stock. This is likely caused by the limited number of small BFT found in the Canadian EEZ and does not accurately reflect the true center of gravity for small BFT.
+
+\hypertarget{model-caveats}{%
+\section{Model caveats}\label{model-caveats}}
+
+Both the American and Canadian datasets report very few sampling events with 0 catch. In the American dataset, the 1993-2002 period has no zeros reported. This likely skews the American indices to incorrectly report high BFT abundance in this period, despite the AR1 temporal correlation process.
+
+The clear age-based spatial structure of BFT (smaller BFT prefer warmer southerly waters, larger BFT prefer colder northerly waters) likely causes issues in the generation of abundance indices. For example, the lack of small BFT in Canadian waters results in very little information for the model to predict and interpolate small BFT abundance in this area.
+
+\hypertarget{refs}{}
+\begin{CSLReferences}{1}{0}
+\leavevmode\vadjust pre{\hypertarget{ref-thorson_2019}{}}%
+Thorson, J. T. 2019. \href{https://doi.org/10.1016/j.fishres.2018.10.013}{Guidance for decisions using the {Vector} {Autoregressive} {Spatio}-{Temporal} ({VAST}) package in stock, ecosystem, habitat and climate assessments}. Fisheries Research 210:143--161.
+
+\leavevmode\vadjust pre{\hypertarget{ref-thorson_comparing_2017}{}}%
+Thorson, J. T., and L. A. K. Barnett. 2017. \href{https://doi.org/10.1093/icesjms/fsw193}{Comparing estimates of abundance trends and distribution shifts using single- and multispecies models of fishes and biogenic habitat}. ICES Journal of Marine Science 74(5):1311--1321.
+
+\leavevmode\vadjust pre{\hypertarget{ref-thorson_accounting_2017}{}}%
+Thorson, J. T., R. Fonner, M. A. Haltuch, K. Ono, and H. Winker. 2017. \href{https://doi.org/10.1139/cjfas-2015-0598}{Accounting for spatiotemporal variation and fisher targeting when estimating abundance from multispecies fishery data}. Canadian Journal of Fisheries and Aquatic Sciences 74(11):1794--1807.
+
+\leavevmode\vadjust pre{\hypertarget{ref-thorson_2015}{}}%
+Thorson, J. T., H. J. Skaug, K. Kristensen, A. O. Shelton, E. J. Ward, J. H. Harms, and J. A. Benante. 2015. \href{https://doi.org/10.1890/14-0739.1}{The importance of spatial models for estimating the strength of density dependence}. Ecology 96(5):1202--1212.
+
+\end{CSLReferences}
 
 \end{document}

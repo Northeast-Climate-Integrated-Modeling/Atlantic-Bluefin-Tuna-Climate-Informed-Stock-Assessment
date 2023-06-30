@@ -96,20 +96,30 @@ BFT data from American and Canadian fisheries are in variable formats and need t
 ## Model domains
 Currently, the model's temporal domain is 1993 - 2020. Though BFT total catch data were recorded prior to 1993, information to determine the size of each fish was not reliably recorded. The final model will include indices for multiple BFT size classes, and so data without associated length or weight information is not useful. The temporal domain currently ends at 2020 because that is the most recent year with Canadian catch data. American catch data ends at 2021. The temporal domain could be extended with new information.
 
-The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included.
+The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included. The model will estimate indices of abundance within both of the spatial strata-- US EEZ waters and Canadian EEZ waters.
 
 ```{r spatial-domain,fig.cap='Fig. 1: VAST model spatial domain', fig.pos='H', message=F}
-bft.area <- st_read(here('Data/GIS/Combined_Bluefin2.shp'), quiet=TRUE)
-bft.area <- st_transform(bft.area, "EPSG:4326")
+# Load spatial information
 coast <- ecodata::coast
 coast <- st_transform(coast, "EPSG:4326")
+us <- st_read(here('Data/GIS/NWAtlantic.shp'))
+us <- st_transform(us, st_crs(coast))
+us$STOCK <- 'US'
+us <- dplyr::select(us, -FID)
+can <- st_read(here('Data/GIS/CanadaEEZ.shp'))
+can <- st_transform(can, st_crs(coast))
+can$STOCK <- 'Canada'
+can <- dplyr::select(can, -OBJECTID, -Id, -Shape_Leng, -Shape_Area)
+stocks <- rbind(us, can)
+stocks <- st_transform(stocks, st_crs(coast))
+stocks <- st_make_valid(stocks)
+new_bb <- st_bbox(stocks)
 
 ggplot() +
   geom_sf(data=coast, fill='gray')+
-  geom_sf(data=bft.area, fill=NA, col='red')+
+  geom_sf(data=stocks, aes(fill=STOCK)) +
   coord_sf(xlim=c(-78, -55),
-           ylim=c(35, 50))
-
+           ylim=c(35, 48))
 ```
 
 ## BFT size categories
@@ -1470,12 +1480,35 @@ Spatial, temporal, and spatiotemporal autocorrelation can be included in both li
 
 # Preliminary results
 
-```{r vastresults}
+## Joint indices of abundance
+
+Indices of abundance for the early period in the model's temporal domain (1993-2000) are highly variable and look to have some issues due to data quality. More work will need to be done to better account for the lack of observations with 0 tuna in this time period.
+
+Model outputs indicate that large BFT CPUE is high and increasing in Canadian waters, and generally has been since the early 2000s. Large BFT CPUE is much lower in American waters, and has a much slower rate of increase.
+
+Small BFT were rarely observed in Canadian waters, and so the index of abundance is extremely low for the entire temporal domain. As the Canadian data is commercial, it is likely that the lack of small BFT is an artifact of fishery selection. It is unlikely that there are 0 small BFT in Canadian waters, as the model suggests. Small BFT are more abundant in American waters, but the model indicates a rapid decrease in small BFT CPUE in the 90s through early 2000s, and a more stable but lower small BFT CPUE since around 2010.
+
+![Fig. 4: Joint indices of abundance](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/index.png)
+
+## Maps of spatial density
+
+Small BFT have typically had highest density in American waters. Historically, areas of highest density were in Southern New England. More recently, these pockets of high density seem to have shifted south into the Mid-Atlantic Bight.
+
+![Fig. 5:Small BFT spatio-temporal density](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png)
+
+Large BFT spatial density is almost the opposite of small BFT. Typically, large BFT density is highest in Canadian waters. The early period of the model indicated areas of high density near Cape Cod, though this is likely caused by the lack of observations with 0 captured tuna prior to 2003. After 2003, large BFT density was highest on eastern Georges Bank and the Scotian Shelf. Density of large BFT south of Cape Cod has declined dramatically throughout the modeled period.
+
+![Fig. 6: Large BFT spatio-temporal density](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png)
 
 
-```
+## Spatial metrics and range shifts
+The model needs to be run once for each spatial strata in order to generate spatial metrics for each strata. As of right now, it takes approximately 9 hours to run on a laptop. Spatial metrics have only been generated for the Canadian stock.
 
+![Fig. 7: Spatial metrics for small BFT in Canadian EEZ](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Small.spring.Canada.png)
 
+![Fig. 8: Spatial metrics for large BFT in Canadian EEZ](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png)
+
+It is interesting that the center of gravity for the small BFT stock in Canadian waters is typically further offshore than the large BFT stock. This is likely caused by the limited number of small BFT found in the Canadian EEZ and does not accurately reflect the true center of gravity for small BFT.
 
 # Model caveats
 Both the American and Canadian datasets report very few sampling events with 0 catch. In the American dataset, the 1993-2002 period has no zeros reported. This likely skews the American indices to incorrectly report high BFT abundance in this period, despite the AR1 temporal correlation process.
