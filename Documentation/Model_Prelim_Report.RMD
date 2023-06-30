@@ -1,0 +1,1483 @@
+---
+title: "Bluefin Combined Index Model V1"
+author: Katie Lankowicz
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  bookdown::pdf_document2:
+    latex_engine: lualatex
+    includes: 
+       in_header: header1.tex
+    keep_tex: true
+link-citations: yes
+csl: "american-fisheries-society.csl"
+bibliography: Cod_VAST.bib
+always_allow_html: true
+header-includes:
+    - \usepackage{setspace}\onehalfspacing
+    - \usepackage{float}
+    - \usepackage{caption}
+    - \captionsetup[figure]{labelformat=empty}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(DT)
+library(pdftools)
+library(patchwork)
+library(ggiraph)
+library(TMB)
+library(units)
+library(VAST)
+library(here)
+library(tidyverse)
+library(beepr)
+library(sf)
+library(rgdal)
+library(sp)
+library(ggcorrplot)
+library(kableExtra)
+library(pander)
+
+# Negate function
+'%notin%' <- function(x,y)!('%in%'(x,y))
+
+# Add unitless back as possible unit (removed in units package update Mar 2023)
+#install_unit(symbol='unitless', def='unitless', name='unitless')
+
+# Set GGplot auto theme
+theme_set(theme(panel.grid.major = element_line(color='lightgray'),
+                panel.grid.minor = element_blank(),
+                panel.background = element_blank(),
+                panel.border = element_rect(color='black', size=1, fill=NA),
+                legend.position = "bottom",
+                axis.text.x=element_text(size=11),
+                axis.text.y=element_text(size=11),
+                axis.title.x=element_text(size=12),
+                axis.title.y=element_text(size=12, angle=90, vjust=2),
+                plot.title=element_text(size=14, hjust = 0, vjust = 1.2),
+                plot.caption=element_text(hjust=0, face='italic', size=12)))
+
+library(webshot)
+if(is.null(webshot:::find_phantom())){webshot::install_phantomjs()}
+
+options(DT.options = list(pageLength = 100))
+
+```
+
+# Motivation
+In the last several decades, global climate change has resulted in warming ocean temperatures and altered marine habitat suitability. Responses to these environmental changes can be seen at the individual, population, and ecosystem level for many marine fish species. Frequently, marine fish will shift their spatial-temporal distribution to track environmental conditions that are better-suited to their energetic requirements. It is suspected that the western stock of Atlantic Bluefin Tuna (BFT) is currently undergoing a climate-forced range shift due to rapidly warming conditions in the Northwest Atlantic. Recent stock assessments for BFT in US and Canadian waters have provided conflicting trends in catch-per-unit-effort (CPUE) indices for BFT, where the Canadian fishery has seen an increase in BFT CPUE and the American fishery has seen a decrease.
+
+This project will create a joint CPUE index for BFT across American and Canadian waters in the Northwest Atlantic using Vector Autoregressive Spatio-Temporal (VAST) modeling. VAST is a flexible model framework based on delta-generalized linear mixed models, and is capable of incorporating information from multiple sources and gear types to create a joint index. VAST can also incorporate the effects of habitat and catchability covariates on organism spatio-temporal distribution. VAST outputs include spatial metrics including spatio-temporal density maps, hierarchical clustering of spatial areas based on organism density, stock center of gravity, area of utilization, and quantile of range edges.
+
+The remainder of this document will be used to report progress on cleaning and merging American and Canadian BFT catch data and making VAST model structure decisions.
+
+# BFT data
+BFT data from American and Canadian fisheries are in variable formats and need to be heavily manipulated prior to merging. The goal is to create a dataframe where each row represents a sampling event. The following variables are desired for each sampling event:
+
+* Unique trip identifier
+* Date
+* Spatial location (latitude and longitude, decimal degrees)
+* Number of hours spent fishing
+* Number of BFT caught in both large and small size groups
+* Sea surface temperature
+* Water depth
+* Sea level pressure
+* Basin-wide daily NAO index
+* Basin-wide monthly AMO index
+* Wind direction and velocity
+* Local chlorophyll-A concentration (as a proxy for plankton distribution)
+* Local prey biomass
+
+## Model domains
+Currently, the model's temporal domain is 1993 - 2020. Though BFT total catch data were recorded prior to 1993, information to determine the size of each fish was not reliably recorded. The final model will include indices for multiple BFT size classes, and so data without associated length or weight information is not useful. The temporal domain currently ends at 2020 because that is the most recent year with Canadian catch data. American catch data ends at 2021. The temporal domain could be extended with new information.
+
+The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included.
+
+```{r spatial-domain,fig.cap='Fig. 1: VAST model spatial domain', fig.pos='H', message=F}
+bft.area <- st_read(here('Data/GIS/Combined_Bluefin2.shp'), quiet=TRUE)
+bft.area <- st_transform(bft.area, "EPSG:4326")
+coast <- ecodata::coast
+coast <- st_transform(coast, "EPSG:4326")
+
+ggplot() +
+  geom_sf(data=coast, fill='gray')+
+  geom_sf(data=bft.area, fill=NA, col='red')+
+  coord_sf(xlim=c(-78, -55),
+           ylim=c(35, 50))
+
+```
+
+## BFT size categories
+BFT are categorized into six size classes by both weight and length. BFT migrations and habitat use are expected to vary with age, and so the ideal model will generate separate indices and spatial metrics for different age groupings. There is not enough information to do this for each of the six size classes, and so the size class information was pooled into two groupings: small and large. Small BFT are 144 cm (56.7 in) and shorter, while large BFT are longer than 177 cm (69.7 in). This structure was chosen to match the structure of current US handline BFT indices. Because the "Small medium" size class straddles the line between groups, these fish have been excluded from analysis.
+
+BFT were categorized according to length, preferentially. If no length information was recorded, weight was used to categorize. If neither length nor weight information was recorded for a fish, it could not be included in analysis.
+
+```{r size-table}
+size.tab <- data.frame(
+  Size = c('Young school', 'School', 'Large school', 
+           'Small medium', 'Large medium', 'Giant'),
+  Grouping = c('Small', 'Small', 'Small', 'NA', 'Large', 'Large'),
+  Curved_FL = c('<27 in', '27 - <47 in', '47 - <59 in',
+                '59 - <73 in', '73 - <81 in', '81+ in'),
+  Pectoral_CFL= c('<20 in', '20 - <35 in', '35 - <44 in',
+                '44 - <54 in', '54 - <60 in', '60+ in'),
+  Weight_LBS = c('<14 lbs', '14 - <66 lbs', '66 - <135 lbs',
+                 '135 - <235 lbs', '235 - <310 lbs', '310+ lbs')
+)
+
+size.tab %>%
+  kable(caption = "Bluefin tuna size classes",
+        booktabs=TRUE,
+        col.names=c('Size class', 'Grouping', 'Curved Fork\nLength', 
+                    'Pectoral Curved\nFork Length', 'Weight (lbs)')) %>%
+  kableExtra::kable_styling(
+    latex_options = c("HOLD_position"))
+
+
+```
+
+## Environmental covariates
+Several ocean climate variables and static properties are expected to cause shifts in BFT distribution. For this model, we will include sea surface temperature, sea level pressure, basin-wide daily NAO, basin-wide monthly AMO, and water depth. When building the VAST model, these will be called density covariates.
+
+## US BFT Recreational Catch
+Catch and effort information for the US recreational BFT fishery is recorded by the Large Pelagics Survey, which is a dockside/telephone survey of a random sample of private and charter boat captains targeting large pelagics. We subset the full LPS dataset so only data from trips targeting BFT were included. Other filters were also applied: only tuna landed in Virginia and northwards were included, fishing trips needed to be between 1 and 24 hours in length, and only fishing trips ending on June 1st through October 31st of each year were included.
+
+LPS data recording procedures changed in 2002, and so data are stored across two sets of files (1993-2002, 2002-present). These needed to be cleaned and merged. This process can be viewed in the accompanying RMarkdown document. An example of results will also be provided.
+
+Note that sea surface temperature and water depth are not always provided by the anglers. We have merged these spatiotemporal catch data with NOAA 1/4° Daily Optimum Interpolation Sea Surface Temperature (OISST) and GEBCO 15 arc-second gridded bathymetric data to get complete data coverage for SST and depth.
+
+```{r loadlps1993, eval=F}
+# Clean and prepare pre-2002 LPS data
+
+# Create dataframe of state codes
+statecodes <- data.frame(
+  stcode = c(9,10,23,24,25,33,34,36,44,51),
+  state = c('CT', 'DE', 'ME', 'MD', 'MA', 'NH', 'NJ', 'NY', 'RI', 'VA')
+)
+
+# Create dataframe of species size codes
+speccode <- data.frame(
+  prim = c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672),
+  size = c('young school', 'school', 'large school', 'small med',
+           'large med', 'giant', 'unknown', 'school or large school')
+)
+
+# Load data
+dat <- read.csv(here('Data/LPS/LPS_rawdata_8001_edit.csv'))
+colnames(dat)
+
+# FILTER -- 
+# June through october, private chartered or headboat, fished bt 1 and 24 hours
+target_bft <- subset(dat,
+                     MONTH %in% c(6:10) &
+                       YEAR > 92 &
+                       STATE %in% statecodes$state &
+                       BOATTYPE %in% c(1,2,3) &
+                       HOURS > 0.99 &
+                       HOURS < 24.01)
+
+# Trips must intentionally target bluefin of any size class
+target_bft=subset(target_bft,
+                    SPECMKT1  %in% speccode$prim|
+                    SPECMKT2  %in% speccode$prim|
+                    SPECMKT3  %in% speccode$prim|
+                    SPECMKT4  %in% speccode$prim|
+                    SPECMKT5  %in% speccode$prim|
+                    SPECMKT6  %in% speccode$prim|
+                    SPECMKT7  %in% speccode$prim|
+                    SPECMKT8  %in% speccode$prim|
+                    SPECMKT9  %in% speccode$prim)
+
+# Fix year
+for(i in 1:nrow(target_bft)){
+  if(target_bft$YEAR[i] < 100){
+    target_bft$YEAR[i] <- target_bft$YEAR[i] + 1900
+  }
+}
+
+# Drop instances without spatial data
+# Filter
+target_bft <- target_bft%>%
+  drop_na(LATDEG) %>%
+  drop_na(LONDEG) %>%
+  drop_na(LATMIN) %>% 
+  drop_na(LONMIN) %>% 
+  filter(LATDEG != 0 & LATDEG !=99) %>% 
+  filter(LONDEG != 0 & LONDEG !=99)
+
+# Pull out bad values-- could be saved
+badvals <- target_bft[target_bft$LONDEG < 61 |
+                      target_bft$LATDEG < 35 | 
+                      target_bft$LATDEG > 46 |
+                      target_bft$LONMIN > 60 |
+                      target_bft$LATMIN > 60,]
+
+# It looks like some of these are input errors
+# I'm going to fix in excel. It's so much easier.
+# Then I'll restart this script with the edited (saved separate) file.
+# After altering data, there are 17 observations with incorrect lat-lon.
+# These cannot be fixed, and will be removed.
+
+target_bft <- target_bft %>% 
+  filter(LONDEG > 60) %>% 
+  filter(LATDEG > 34) %>% 
+  filter(LONMIN < 61) %>% 
+  filter(LATMIN < 61)
+
+# Make unique trip ID
+target_bft <- target_bft[with(target_bft, order(ID, YEAR, MONTH, DAY)),]
+dupids <- target_bft$ID[duplicated(target_bft$ID)]
+dups <- target_bft[target_bft$ID  %in% dupids,]
+dups <- dups[with(dups, order(ID, YEAR, MONTH, DAY)),]
+target_bft$OLDID <- target_bft$ID
+# It's not unique. Make our own.
+target_bft$ID <- paste0(target_bft$SAMPLER, "_", 
+                        target_bft$STATE, "_",
+                        target_bft$YEAR, 
+                        str_pad(target_bft$MONTH, width=2, side="left", "0"),
+                        str_pad(target_bft$DAY, width=2, side="left", "0"),
+                        "_",
+                        str_pad(target_bft$docnum, width=6, side="left", "0"))
+
+dupids <- target_bft$ID[duplicated(target_bft$ID)]
+dups <- target_bft[target_bft$ID  %in% dupids,]
+# No duplicates left
+rm(badvals, dups, dupids)
+
+# Order
+target_bft <- target_bft[with(target_bft, order(YEAR, MONTH, DAY, ID)),]
+rownames(target_bft) <- NULL
+
+# Remove unnecessary columns
+target_bft <- dplyr::select(target_bft, 
+                            -SAMPLER, -docnum, -PHONDOCK, -MARINA,
+                            -INLET, -BOAT, -FISHMETH, -GEAR,
+                            -ANGLERS, -LINES, -FISHAREA, -LANDCODE, 
+                            -SURVTYPE)
+
+# Compute catch: kept plus released
+target_bft$CATCH1 <- target_bft$KEPT1 + target_bft$REL1
+target_bft$CATCH2 <- target_bft$KEPT2 + target_bft$REL2
+target_bft$CATCH3 <- target_bft$KEPT3 + target_bft$REL3
+target_bft$CATCH4 <- target_bft$KEPT4 + target_bft$REL4
+target_bft$CATCH5 <- target_bft$KEPT5 + target_bft$REL5
+target_bft$CATCH6 <- target_bft$KEPT6 + target_bft$REL6
+target_bft$CATCH7 <- target_bft$KEPT7 + target_bft$REL7
+target_bft$CATCH8 <- target_bft$KEPT8 + target_bft$REL8
+target_bft$CATCH9 <- target_bft$KEPT9 + target_bft$REL9
+
+# Reduce data
+target_bft <- dplyr::select(target_bft, OLDID,
+                            ID, YEAR, MONTH, DAY, TOURN, TARGET,
+                            STATE, BOATTYPE, HOURS, 
+                            LATDEG, LATMIN, LONDEG, LONMIN,
+                            DEPTH, TEMP, SPECMKT1, CATCH1, SPECMKT2, CATCH2,
+                            SPECMKT3, CATCH3, SPECMKT4, CATCH4, SPECMKT5,
+                            CATCH5, SPECMKT6, CATCH6, SPECMKT7, CATCH7,
+                            SPECMKT8, CATCH8, SPECMKT9, CATCH9)
+
+# Reshape data
+bf.split <- split(target_bft, f=target_bft$ID)
+tempdat <- data.frame(
+  OLDID=rep(NA,9),
+  ID=rep(NA, 9),
+  YEAR=rep(NA, 9),
+  MONTH =rep(NA, 9),
+  DAY =rep(NA, 9),
+  TOURN=rep(NA,9),
+  TARGET=rep(NA,9),
+  STATE=rep(NA, 9),
+  BOATTYPE =rep(NA, 9),
+  HOURS=rep(NA, 9),
+  LATDEG=rep(NA, 9),
+  LATMIN=rep(NA, 9),
+  LONDEG=rep(NA, 9),
+  LONMIN=rep(NA, 9),
+  DEPTH=rep(NA, 9),
+  TEMP=rep(NA, 9),
+  SPEC=rep(NA, 9),
+  CATCH=rep(NA, 9)
+)
+
+for(i in 1:length(bf.split)){
+  temp <- bf.split[[i]]
+  
+  keep <- tempdat
+  
+  keepspec <- c(temp$SPECMKT1, temp$SPECMKT2, temp$SPECMKT3,
+                temp$SPECMKT4, temp$SPECMKT5, temp$SPECMKT6,
+                temp$SPECMKT7, temp$SPECMKT8, temp$SPECMKT9)
+  
+  keepcatch <- c(temp$CATCH1, temp$CATCH2, temp$CATCH3,
+                 temp$CATCH4, temp$CATCH5, temp$CATCH6,
+                 temp$CATCH7, temp$CATCH8, temp$CATCH9)
+  keep$OLDID <- temp$OLDID[1]
+  keep$ID <-  temp$ID[1]
+  keep$YEAR <- temp$YEAR[1]
+  keep$MONTH <-  temp$MONTH[1]
+  keep$DAY <- temp$DAY[1]
+  keep$TOURN <- temp$TOURN[1]
+  keep$TARGET <- temp$TARGET[1]
+  keep$STATE <-  temp$STATE[1]
+  keep$BOATTYPE <- temp$BOATTYPE[1]
+  keep$HOURS <-  temp$HOURS[1]
+  keep$LATDEG <- temp$LATDEG[1]
+  keep$LATMIN <-  temp$LATMIN[1]
+  keep$LONDEG <- temp$LONDEG[1]
+  keep$LONMIN <-  temp$LONMIN[1]
+  keep$DEPTH <- temp$DEPTH[1]
+  keep$TEMP <- temp$TEMP[1]
+  keep$SPEC <-  keepspec
+  keep$CATCH <- keepcatch
+  
+  bf.split[[i]] <- keep
+  
+  rm(temp, keep, keepspec, keepcatch)
+}
+
+# Rebind to data frame
+tbft <- do.call(rbind, bf.split)
+rownames(tbft) <- NULL
+
+# Reduce data
+tbft <- tbft[!is.na(tbft$SPEC),]
+tbft <- subset(tbft, SPEC %in% speccode$prim)
+
+# Reorder
+tbft <- tbft[with(tbft, order(YEAR, MONTH, DAY, STATE, ID)),]
+rownames(tbft) <- NULL
+
+# Fix lat-lon
+tbft$lat <- tbft$LATDEG + (tbft$LATMIN / 60)
+tbft$lon <- tbft$LONDEG + (tbft$LONMIN / 60)
+tbft$lon <- tbft$lon * -1
+tbft <- dplyr::select(tbft,
+                      -LATDEG, -LATMIN, -LONDEG, -LONMIN)
+
+# Plot
+plotprep <- dplyr::select(tbft, ID, lon, lat)
+plotprep <- unique(plotprep)
+dat_sf <- st_as_sf(plotprep, coords=c('lon', 'lat'))
+st_crs(dat_sf) <- "EPSG:4326"
+coast <- ecodata::coast
+coast <- st_transform(coast, crs=st_crs(dat_sf))
+
+nwat <- st_read(here('Data/GIS/NWAtlantic.shp'), quiet=T)
+nwat <- st_transform(nwat, crs=st_crs(coast))
+
+# Remove points on land
+innwat.1993 <- st_intersection(dat_sf, nwat)
+
+dat_sf <- dat_sf[dat_sf$ID %in% innwat.1993$ID,]
+
+# Remove points on land or far away
+ggplot(coast)+
+  geom_sf(data=nwat, fill='lightblue') +
+  geom_sf(fill='gray') +
+  geom_sf(data=dat_sf, cex=0.5) +
+  coord_sf(xlim=c(-79, -65),
+           ylim=c(34, 47)) 
+
+tbft <- tbft[tbft$ID %in% dat_sf$ID,]
+
+colnames(tbft) <- tolower(colnames(tbft))
+
+tbft <- dplyr::select(tbft, oldid, id, year, month, day, tourn, target, 
+                      hours, depth, temp, spec, catch, lat, lon)
+
+colnames(tbft) <- c('oldid', 'id', 'year', 'month', 'day', 'tourn', 'target',
+                    'fhours','depth', 'sst', 'prim', 'catch', 'lat', 'lon')
+
+tbft <- merge(tbft, speccode, by=c('prim'))
+tbft <- dplyr::select(tbft,oldid, id, year, month, day, tourn, target, 
+                      fhours, depth, sst, lon, lat,
+                      size, catch)
+
+tb.list <- split(tbft, f=tbft$id)
+catchtype2 <- c('small', 'large')
+tempdf <- data.frame(
+  Size_class = catchtype2,
+  oldid=rep(NA, length(catchtype2)),
+  id=rep(NA, length(catchtype2)),
+  year=rep(NA, length(catchtype2)),
+  month=rep(NA, length(catchtype2)),
+  day=rep(NA, length(catchtype2)),
+  tourn=rep(NA, length(catchtype2)),
+  target=rep(NA, length(catchtype2)),
+  #month=rep(NA, length(catchtype)),
+  #day=rep(NA, length(catchtype)),
+  fhours=rep(NA, length(catchtype2)),
+  depth=rep(NA, length(catchtype2)),
+  sst=rep(NA, length(catchtype2)),
+  lon=rep(NA, length(catchtype2)),
+  lat=rep(NA, length(catchtype2)),
+  
+  catch=rep(NA, length(catchtype2))
+  
+)
+
+for(i in 1:length(tb.list)){
+  temp <- tb.list[[i]]
+  
+  holddf <- tempdf
+  
+  holddf$oldid <- temp$oldid[1]
+  holddf$id <- temp$id[1]
+  holddf$year <- temp$year[1]
+  holddf$month <- temp$month[1]
+  holddf$day <- temp$day[1]
+  holddf$tourn <- temp$tourn[1]
+  holddf$target <- temp$target[1]
+  holddf$fhours <- temp$fhours[1]
+  holddf$depth <- temp$depth[1]
+  holddf$sst <- temp$sst[1]
+  holddf$lon <- temp$lon[1]
+  holddf$lat <- temp$lat[1]
+  
+  catchsm <- temp$catch[temp$size %in% c('young school',
+                                                 'school', 
+                                                 'large school')]
+  catchlg <- temp$catch[temp$size %in% c('large med', 'giant')]
+  
+  if(length(catchsm) > 0){holddf$catch[1] <- sum(catchsm)}
+  if(length(catchsm) == 0){holddf$catch[1] <- 0}
+  
+  if(length(catchlg) > 0){holddf$catch[2] <- sum(catchlg)}
+  if(length(catchlg) == 0){holddf$catch[2] <- 0}
+  
+  tb.list[[i]] <- holddf
+  
+  rm(temp, holddf, catchsm, catchlg)
+  
+}
+tb <- do.call(rbind, tb.list)
+rownames(tb) <- NULL
+
+# Convert depth to m
+tb$depth[tb$depth > 8999 | tb$depth == 0] <- NA
+tb$depth <- round(tb$depth * -0.3048,1)
+
+# Convert temp to C
+tb$sst[tb$sst > 90 | tb$sst < 37] <- NA
+tb$sst <- weathermetrics::fahrenheit.to.celsius(tb$sst, 
+                                                        round = 2)
+# Check tournament codes
+# If any value other than yes (1) or no (2), set to no (2)
+tb$tourn[tb$tourn %notin% c(1,2)] <- 2
+
+# Remove oldid and target
+tb$oldid <- NULL
+tb$target <- NULL
+
+# Rename
+lps.pre.2002 <- tb
+rm(nwat, plotprep, target_bft, tb, tb.list, tbft, tempdat, tempdf, catchtype2, i,
+   dat, dat_sf, innwat.1993, bf.split)
+
+```
+
+```{r loadlps2002, eval=F}
+# Load data pulled directly from NMFS
+dat <- read.csv(here('Data/LPS/ALL/LPS_trip_level_0221.csv'))
+# Reduce dataframe to necessesities
+dat <- dplyr::select(dat,
+                     id, year, month, day, tourn,
+                     stcode, prim_op,
+                     prim1, prim2, fhours,
+                     latddmm, londdmm, depth, sst,
+                     young_school_bft, school_bft, large_school_bft,
+                     small_med_bft, large_med_bft, giant_bft, unk_bft)
+# Add total catch
+dat$tot_bft <- dat$young_school_bft + dat$school_bft + dat$large_school_bft +
+  dat$small_med_bft + dat$large_med_bft + dat$giant_bft + dat$unk_bft
+
+# FILTER -- 
+# June through october, private chartered or headboat, fished bt 1 and 24 hours
+target_bft <- subset(dat,
+                     month %in% c(6:10) &
+                     prim_op %in% c(1,2,3) &
+                     fhours > 0.99 &
+                     fhours < 24.01)
+# Trips must intentionally target bluefin of some any class
+target_bft=subset(target_bft,
+                  prim1 %in% c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672)|
+                  prim2 %in% c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672))
+
+# Alter state from code to abbrev
+target_bft <- merge(target_bft, statecodes, by=c('stcode'))
+target_bft$stcode <- NULL
+
+# Alter species codes
+colnames(speccode) <- c('prim1', 'primary')
+target_bft <- merge(target_bft, speccode, by=c('prim1'), all=T)
+colnames(speccode) <- c('prim2', 'secondary')
+target_bft <- merge(target_bft, speccode, by=c('prim2'), all=T)
+target_bft <- dplyr::select(target_bft, -prim1, -prim2)
+
+# Remove observations without spatial data
+target_bft <- subset(target_bft, londdmm < 9000)
+target_bft <- subset(target_bft, latddmm < 9000)
+
+# Calculate lat-lon
+# This is reported in DDMM, so must be converted
+# First, remove instances where MM > 60 for both lon and lat: reported wrong
+target_bft$latmm <- substr(target_bft$latddmm,start=3,stop=4)
+target_bft$lonmm <- substr(target_bft$londdmm,start=3,stop=4)
+badvals <- target_bft[target_bft$latmm > 60 |
+                        target_bft$lonmm > 60,]
+target_bft <- subset(target_bft,
+                     (substr(target_bft$londdmm, start=3, stop=4) < 61))
+target_bft <- subset(target_bft,
+                     (substr(target_bft$latddmm, start=3, stop=4) < 61))
+                     
+# Calculate decimal degrees from degree-minutes
+target_bft$lon <- (as.numeric(substr(target_bft$londdmm, start=1, stop=2)) +
+  (as.numeric(substr(target_bft$londdmm, start=3, stop = 4)) / 60)) * (-1)
+target_bft$lat <- (as.numeric(substr(target_bft$latddmm, start=1, stop=2)) +
+  (as.numeric(substr(target_bft$latddmm, start=3, stop = 4)) / 60))
+
+# Check accuracy of lat-lon
+bft_sf <- st_as_sf(target_bft, coords=c('lon', 'lat'), crs='EPSG:4326')
+coast <- st_transform(ecodata::coast, crs=st_crs(bft_sf))
+# Plot just to see
+nwat <- st_read(here('Data/GIS/NWAtlantic.shp'), quiet=TRUE)
+nwat <- st_transform(nwat, crs=st_crs(coast))
+
+# Remove points on land
+inwat <- st_intersection(bft_sf, nwat)
+
+bft_sf <- bft_sf[bft_sf$id %in% inwat$id,]
+target_bft <- target_bft[target_bft$id %in% inwat$id,]
+
+# Calculate SST in celsius
+target_bft$sst[target_bft$sst > 90] <- NA
+target_bft$sst <- weathermetrics::fahrenheit.to.celsius(target_bft$sst, 
+                                                        round = 2)
+# Fix depth
+target_bft$depth <- target_bft$depth * -1
+target_bft$depth[target_bft$depth < -9000] <- NA
+
+# Order 
+target_bft <- target_bft[with(target_bft, order(year, month, day, id)),]
+rownames(target_bft) <- NULL
+
+# Remove unnecessary columns
+target_bft <- dplyr::select(target_bft, id, year, month, day, tourn,
+                            fhours, depth, sst,
+                            young_school_bft, school_bft, large_school_bft,
+                            large_med_bft, giant_bft, lon, lat)
+
+
+# Create one row for each kind of catch
+dat.list <- split(target_bft, f=target_bft$id)
+catchtype2 <- c('small', 'large')
+tempdf <- data.frame(
+  Size_class = catchtype2,
+  id=rep(NA, length(catchtype2)),
+  year=rep(NA, length(catchtype2)),
+  month=rep(NA, length(catchtype2)),
+  day=rep(NA, length(catchtype2)),
+  tourn=rep(NA, length(catchtype2)),
+  #month=rep(NA, length(catchtype)),
+  #day=rep(NA, length(catchtype)),
+  fhours=rep(NA, length(catchtype2)),
+  depth=rep(NA, length(catchtype2)),
+  sst=rep(NA, length(catchtype2)),
+  lon=rep(NA, length(catchtype2)),
+  lat=rep(NA, length(catchtype2)),
+  
+  catch=rep(NA, length(catchtype2))
+  
+)
+
+for(i in 1:length(dat.list)){
+  temp <- dat.list[[i]]
+  
+  tempdf.in <- tempdf
+  
+  tempdf.in$id <- temp$id
+  tempdf.in$year <- temp$year
+  tempdf.in$month <- temp$month
+  tempdf.in$day <- temp$day
+  tempdf.in$tourn <- temp$tourn
+  #tempdf.in$month <- temp$month
+  #tempdf.in$day <- temp$day
+  tempdf.in$fhours <- temp$fhours
+  tempdf.in$depth <- temp$depth
+  tempdf.in$sst <- temp$sst
+  tempdf.in$lon <- temp$lon
+  tempdf.in$lat <- temp$lat
+  
+  tempdf.in$catch[1] <- temp$young_school_bft +temp$school_bft+temp$large_school_bft
+  tempdf.in$catch[2] <- temp$large_med_bft + temp$giant_bft
+  
+  
+  dat.list[[i]] <- tempdf.in
+  
+  rm(temp, tempdf.in)
+}
+dat2 <- do.call(rbind, dat.list)
+dat2 <- dat2[with(dat2, order(year, id)),]
+rownames(dat2) <- NULL
+
+# Check tournament codes
+# If tcode is skipped, refused, or dont know, set to 2 (NO)
+dat2$tourn[dat2$tourn %notin% c(1,2)] <- 2
+
+# View
+lps.post.2002 <- dat2
+
+rm(badvals, bft_sf, dat, dat.list, dat2, inwat, nwat, size.tab,
+   speccode, statecodes, target_bft, tempdf, catchtype2, i, coast)
+
+```
+
+```{r mergelps}
+# Load data
+dat <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata.csv'))
+
+dat$sstsource <- NULL; dat$depthsource <- NULL; dat$prey <- NULL
+
+# View
+brief <- dat[1:6,]
+brief$tourn <- NULL
+brief$id <- as.numeric(as.factor(brief$id))
+colnames(brief) <- c('Size', 'Trip\nID', 'Year', 'Month', 'Day', 
+                    'Hours\nfished', 'Lon', 'Lat', 'nCatch',
+                    'SST\n(C)', 'Depth\n(m)', 'Pressure', 'NAO', 'AMO')
+
+# Table
+brief %>%
+  kable(caption = "American Large Pelagic Survey example",
+        booktabs=TRUE) %>%
+  kableExtra::kable_styling(
+    latex_options = c("HOLD_position")) %>% 
+  kableExtra::landscape()
+
+rm(brief)
+```
+
+```{r americanplot, fig.cap='Fig. 2: Spatial distribution of American recreational catch'}
+dat_sf <- st_as_sf(dat, coords=c('lon', 'lat'))
+st_crs(dat_sf) <- "EPSG:4326"
+coast <- ecodata::coast
+coast <- st_transform(coast, "EPSG:4326")
+
+ggplot() +
+  geom_sf(data=coast, fill='gray')+
+  geom_sf(data=dat_sf, cex=0.6) +
+  coord_sf(xlim=c(-77, -66),
+           ylim=c(35, 45))
+
+rm(coast, dat, dat_sf)
+```
+
+## Canadian BFT Commercial Landings
+Catch and effort data for the Canadian commercial BFT fishery are recorded in commercial logbooks. We will only be working with commercial data from the Southwest Nova Scotia region, though data exists for the Gulf of Saint Lawrence region as well. The same data filters regarding fishing hours and month fished applied to the US data were applied to the Canadian data. Though the US recreational fishery is likely all rod and reel, the Canadian commercial fishery also includes harpoon and tended line gear. This could later inform some model structure decisions.
+
+Data collection methods changed in 2003, and so the data are stored across two sets of files (Commercial Landings 95-03, Historical Data. These needed to be cleaned and merged. This process can be viewed in the accompanying RMarkdown document. An example of results will also be provided.
+
+There are some concerns with the historic (1993-2002) Canadian data. The data have several columns that I cannot make sense of without metadata. Although I assume I have only been provided with BFT catch, there is a column for species landed in the data. The values within this column are numeric (252-256), and I do not know what these numbers mean. For now, I have made the assumption that all these species codes refer to BFT. In the future, I can subset out non-BFT data if I am made aware that some of these species codes are not BFT.
+
+```{r loadcan1993, eval=F}
+# Load data
+load(here('Data/comland95_03_detail.RDATA'))
+comland <- LogSlip9503_detail
+#rm(LogSlip9503_detail)
+
+#### View data ####
+# Strip to necessary variables
+comland <- dplyr::select(comland,
+                         LOG_CODE, TRIP_CODE,
+                         
+                         FLEET, GEAR,
+                         
+                         UNIT_AREA2,
+                         
+                         DATE_SAILED2, DATE_FISHED, DATE_LANDED2,
+                         LIVE_WEIGHT_KG,
+                         
+                         T_LATITUDE, T_LONGITUDE,
+                         
+                         SEADAYS, 
+                         WATER_TEMP2
+                         )
+
+# Rename
+colnames(comland) <- c('log', 'trip', 'fleet', 'gear', 'unit',
+                       'date_sailed', 'date_fished', 'date_landed',
+                       'live_wt_kg','lat', 'lon',
+                       'seadays', 'surface_temp')
+
+#### Data cleaning ####
+## Log and trip ID
+# This dataset has a row for every fish landed.
+# The number of unique log and trip IDs should be equal
+# length(unique(comland$log)) == length(unique(comland$trip))
+
+## Fleet
+# I'm not clear on what fleet means but it should be a category
+comland$fleet <- as.factor(comland$fleet)
+
+## Gear
+# HARP == harpoon, RR == rod and reel, TL == tended line
+comland$gear <- as.factor(comland$gear)
+
+## Spatial management units
+# NAFO units
+comland$unit <- as.factor(comland$unit)
+# There is some discrepancy here. Will probably end up scrapping this information
+# and re-doing it with available shapefiles.
+
+## Time at sea
+# We can calculate this from the provided information and check it against seadays
+comland$days_fished <- difftime(comland$date_landed, comland$date_sailed,
+                                 units='days')
+comland$days_fished <- as.vector(comland$days_fished)
+comland$dif_days <- comland$days_fished - comland$seadays
+# Some minor discrepancies. We'll stick with seadays and remove others.
+comland$date_landed <- NULL
+comland$date_sailed <- NULL
+comland$dif_days <- NULL
+comland$days_fished <- NULL
+# Negative values are not allowed
+comland <- comland[comland$seadays > 0,]
+# Create hours
+comland$seahours <- comland$seadays * 24
+
+## Size classes
+# Create size classes to match US size classes
+size.class <- data.frame(
+  class = c('young_school', 'school', 'large_school',
+            'small_medium', 'large_medium', 'giant'),
+  wt_min_lbs = c(0.1, 14, 
+                 66, 135, 
+                 235, 310),
+  wt_max_lbs = c(13.999, 65.999,
+                 134.999, 234.999,
+                 309.999, 15000)
+)
+size.class$wt_min_kgs <- size.class$wt_min_lbs * 0.453592
+size.class$wt_max_kgs <- size.class$wt_max_lbs * 0.453592
+# Assign size classes by weight
+comland$size_class[comland$live_wt_kg > 0 &
+                     comland$live_wt_kg < 6.349834 ] <- 'small'
+comland$size_class[comland$live_wt_kg >= 6.349834 &
+                     comland$live_wt_kg< 29.936618] <- 'small'
+comland$size_class[comland$live_wt_kg >=29.936618 &
+                     comland$live_wt_kg< 61.234466] <- 'small'
+comland$size_class[comland$live_wt_kg >=61.234466 &
+                     comland$live_wt_kg< 106.593666] <- 'remove'
+comland$size_class[comland$live_wt_kg >=106.593666 &
+                     comland$live_wt_kg< 140.613066] <- 'large'
+comland$size_class[comland$live_wt_kg >=140.613066 &
+                     comland$live_wt_kg< 10000] <- 'large'
+# Remove small-medium
+comland <- comland[comland$size_class != 'remove',]
+comland$size_class <- as.factor(comland$size_class)
+
+## Spatial location
+# Cannot keep instances without spatial information
+comland <- comland[comland$lat > 0,]
+comland <- comland[!is.na(comland$lat),]
+comland <- comland[comland$lon > 0,]
+comland <- comland[!is.na(comland$lon),]
+# Lon needs to be negative
+comland$lon <- comland$lon * -1
+# Plot
+comland.sf <- st_as_sf(comland, coords=c('lon', 'lat'))
+st_crs(comland.sf) <- 'EPSG:4326'
+coast <- ecodata::coast
+coast <- st_transform(coast, st_crs(comland.sf))
+# Some instances of flipped lat-lon. Can fix.
+bads <- comland[comland$lat > 60,]
+# Unfixable typo for trip 10379719950914
+comland$lat[comland$trip == "15104019981013"] <- 45.02
+comland$lon[comland$trip == "15104019981013"] <- -61.47
+comland$lat[comland$trip == "15104019981014"] <- 45.10
+comland$lon[comland$trip == "15104019981014"] <- -61.45
+comland <- comland[comland$trip != "10379719950914",]
+# Replot
+comland.sf <- st_as_sf(comland, coords=c('lon', 'lat'))
+st_crs(comland.sf) <- 'EPSG:4326'
+# Remove instances on land
+overland <- st_intersection(comland.sf, coast)
+comland2 <- comland[comland$trip %notin% overland$trip,]
+# Remove final spatial error
+comland2 <- comland2[comland2$trip != '15513319981014',]
+# Replot
+comland.sf <- st_as_sf(comland2, coords=c('lon', 'lat'))
+st_crs(comland.sf) <- 'EPSG:4326'
+ggplot() +
+  geom_sf(data=coast, fill='gray') +
+  geom_sf(data=comland.sf, cex=0.6) +
+  coord_sf(xlim=c(st_bbox(comland.sf)[1], st_bbox(comland.sf)[3]),
+           ylim=c(st_bbox(comland.sf)[2], st_bbox(comland.sf)[4]))
+
+
+rm(bads, coast, comland.sf)
+
+## Temporal constraints
+# Add year and month
+comland2$year <- lubridate::year(comland2$date_fished)
+comland2$month <- lubridate::month(comland2$date_fished)
+comland2$day <- lubridate::day(comland2$date_fished)
+# American dataset is limited to 1993 - present
+comland2 <- subset(comland2, year >=1993)
+# American dataset is limited to months Jun-Oct
+comland2 <- subset(comland2, month %in% c(seq(6,10)))
+table(comland2$year, comland2$month)
+# American datast is limited to fishing effort bt 1 and 24 hrs
+comland2 <- comland2[comland2$seahours >=1 & comland2$seahours <=24,]
+
+# Final strip
+comland2 <- dplyr::select(comland2,
+                          size_class, trip, year, month, day, seahours,
+                          lon, lat, surface_temp)
+colnames(comland2) <- c('Size_class', 'trip', 'year', 'month', 'day',
+                        'fhours','lon', 'lat', 'sst')
+
+# Count number of fish of a size class caught each trip
+comland3 <- comland2 %>% count(trip, Size_class)
+colnames(comland3) <- c('trip', 'Size_class', 'catch')
+
+# Merge back to full dataset
+comland4 <- left_join(comland2, comland3, by=c('trip', 'Size_class'))
+comland4 <- unique(comland4)
+
+# Average spatial information- sometimes report multiple catch locations when 
+# there are multiple fish
+comland5 <- comland4
+comland5 <- comland4 %>% 
+  group_by(trip, Size_class) %>% 
+  summarise(mean.lat = mean(lat),
+            mean.lon = mean(lon),
+            mean.sst = mean(sst, na.rm=TRUE))
+comland5 <- as.data.frame(comland5)
+
+comland6 <- left_join(comland4, comland5, by=c('trip', 'Size_class'))
+comland6 <- dplyr::select(comland6, 
+                          Size_class, trip, year, month, day, fhours, 
+                          mean.lon, mean.lat, mean.sst, catch)
+colnames(comland6)[7] <- 'lon'
+colnames(comland6)[8] <- 'lat'
+colnames(comland6)[9] <- 'sst' 
+
+comland6 <- unique(comland6)
+
+comland6 <- comland6[with(comland6, order(year,month, day, trip, Size_class, lat)),]
+
+can.comm.1993 <- comland6
+
+rm(comland, comland2, comland3, comland4, comland5, comland6,
+   overland, size.class, LogSlip9503_detail)
+```
+
+```{r loadcan2002, eval=F}
+load(here('Data/DisaggregatedSWNSdata.RDATA'))
+#rm(LogSlip9503_detail)
+
+#### Start with Hdata ####
+Hdata <- unique(Hdata)
+
+# Strip
+hdata2 <- dplyr::select(Hdata,
+                        TRIP_ID, YEAR, VR_NUMBER, TRIP_NUMBER, MONTH, DAY, SEADAYS,
+                        LON, LAT, TOTAL_NUM_BFT_CAUGHT_TRIP3,
+                         
+                        -RND_KGS_251, -RND_KGS_252, -RND_KGS_253,
+                        -RND_KGS_255, -RND_KGS_256,
+                        GEAR, NAFO_UNIT, LANDED_DATE)
+
+colnames(hdata2) <- tolower(colnames(hdata2))
+colnames(hdata2) <- c('trip', 'year', 'vr_number', 'trip_number',
+                      'month', 'day', 'seadays',
+                      'lon', 'lat', 'catch',
+                      'gear', 'unit', 'landed_date')
+
+### Data checks
+## Remove stuff I cannot work with or need to filter out
+hdata2 <- unique(hdata2)
+hdata2 <- subset(hdata2, year >=1993)
+hdata2 <- hdata2[hdata2$month %in% seq(6, 10),]
+hdata2$seadays <- as.vector(hdata2$seadays)
+hdata2 <- hdata2[hdata2$seadays >= (1/24) &
+                   hdata2$seadays <=1,]
+hdata2 <- hdata2[!is.na(hdata2$lon),]
+hdata2 <- hdata2[!is.na(hdata2$lat),]
+
+hdata2 <- hdata2[with(hdata2,
+                      order(year, month, day, vr_number, trip, catch)),]
+
+## Trip
+# I think this is an aggregate of all BFT caught 
+# This is a problem for size class info but we can work with it for now
+# Should have one row per trip
+dups <- hdata2$trip[duplicated(hdata2$trip)]
+dups <- hdata2[hdata2$trip %in% dups,]
+# There is a discrepancy in NAFO unit. This does not matter. I will drop the second duplicate.
+keep <- dups[1,]
+hdata2 <- hdata2[hdata2$trip != "307316",]
+hdata2 <- rbind(hdata2, keep)
+
+## Effort
+hdata2$fhours <- hdata2$seadays * 24
+hdata2$seadays <- NULL
+
+## Spatial location
+hdata2 <- hdata2[hdata2$lon > 10,]
+hdata2$lon <- hdata2$lon * -1
+# Plot
+hdata2.sf <- st_as_sf(hdata2, coords=c('lon', 'lat'))
+st_crs(hdata2.sf) <- 'EPSG:4326'
+coast <- ecodata::coast
+coast <- st_transform(coast, st_crs(hdata2.sf))
+# There's one way out there that has to be deleted for incorrectness
+hdata2 <- hdata2[hdata2$lon < -55,]
+hdata2.sf <- st_as_sf(hdata2, coords=c('lon', 'lat'))
+st_crs(hdata2.sf) <- 'EPSG:4326'
+# Remove points on land
+overland <- st_intersection(hdata2.sf, coast)
+hdata3 <- hdata2[hdata2$trip %notin% overland$trip,]
+# Plot again
+hdata3.sf <- st_as_sf(hdata3, coords=c('lon', 'lat'))
+st_crs(hdata3.sf) <- 'EPSG:4326'
+ggplot() +
+  geom_sf(data=coast, fill='gray') +
+  geom_sf(data=hdata3.sf, cex=0.6) +
+  coord_sf(xlim=c(st_bbox(hdata3.sf)[1], st_bbox(hdata3.sf)[3]),
+           ylim=c(st_bbox(hdata3.sf)[2], st_bbox(hdata3.sf)[4]))
+# A few are mislabeled
+badtrip1 <- hdata3$trip[hdata3$unit == '4W' & hdata3$lon < -64]
+badtrip2 <- hdata3$trip[hdata3$unit == '4X' & hdata3$lon > -63]
+badtrips <- c(badtrip1, badtrip2)
+hdata3 <- hdata3[hdata3$trip %notin% badtrips,]
+rm(badtrip1, badtrip2, hdata2.sf, hdata3.sf, dups, bad, keep, badtrips)
+
+## Catch
+hdata3 <- dplyr::select(hdata3,
+                        trip, year, month, day, lon, lat, catch,
+                        gear, unit, fhours)
+
+## Gear
+hdata3$gear <- as.factor(hdata3$gear)
+
+## NAFO Unit
+hdata3$unit <- as.factor(hdata3$unit)
+
+## Finalize
+hdata4 <- dplyr::select(hdata3,
+                        trip, year, month, day, fhours,
+                        lon, lat, catch)
+hdata4$Size_class <- 'Unknown'
+hdata4 <- unique(hdata4)
+
+can.comm.hdata <- hdata4
+
+#### marfis.bftlog ####
+rm(overland, Hdata, hdata2, hdata3)
+
+marfis <- marfis.bftlog
+#rm(marfis.bftlog)
+
+## Strip
+marfis <- dplyr::select(marfis,
+                        TRIP_ID, VR_NUMBER, TRIP_NUMBER,
+                        YEAR, MONTH,
+                        DATE_FISHED, SEADAYS,
+                        LONGITUDE, LATITUDE,
+                        TOTAL_NUM_BFT_CAUGHT_TRIP,
+                        BFT_LANDED_WEIGHT_LBS,
+                        GEAR, COUNT, WATER_TEMP2,
+                        NAFO_UNIT2
+                        )
+colnames(marfis) <- tolower(colnames(marfis))
+colnames(marfis)[1] <- 'trip'
+
+# Order
+marfis <- marfis[with(marfis, order(trip, bft_landed_weight_lbs)),]
+
+# Add day
+marfis$day <- lubridate::day(marfis$date_fished)
+
+# Get rid of stuff I cannot work with
+marfis <- marfis[!is.na(marfis$longitude),]
+marfis <- marfis[!is.na(marfis$latitude),]
+marfis <- subset(marfis, year >=1993)
+marfis <- marfis[marfis$month %in% seq(6, 10),]
+
+# Check sea days
+marfis$seahours <- marfis$seadays * 24
+marfis <- marfis[!is.na(marfis$seahours),]
+marfis <- marfis[marfis$seahours >=1 &
+                 marfis$seahours <=24,]
+marfis$seadays <- NULL
+
+## Trip information
+# This tab has bio information on caught fish. Some of it will match info from
+# the Hdata dataframe. There will be mulitiple instances of trip if more than one
+# fish was caught on that trip.
+
+## Spatial information
+# This is written as ddmmss. Needs to be changed to decimal degrees.
+marfis$latitudedd <- substr(marfis$latitude, start=1, stop=2)
+marfis$latitudedd <- as.numeric(marfis$latitudedd)
+marfis$latitudemm <- substr(marfis$latitude, start=3, stop=4)
+marfis$latitudemm <- as.numeric(marfis$latitudemm)
+marfis$latitudess <- substr(marfis$latitude, start=5, stop=6)
+marfis$latitudess <- as.numeric(marfis$latitudess)
+
+marfis$LAT <- marfis$latitudedd +
+  (marfis$latitudemm / 60) +
+  (marfis$latitudess / 3600)
+
+marfis$longitudedd <- substr(marfis$longitude, start=1, stop=2)
+marfis$longitudedd <- as.numeric(marfis$longitudedd)
+marfis$longitudemm <- substr(marfis$longitude, start=3, stop=4)
+marfis$longitudemm <- as.numeric(marfis$longitudemm)
+marfis$longitudess <- substr(marfis$longitude, start=5, stop=6)
+marfis$longitudess <- as.numeric(marfis$longitudess)
+
+marfis$LON <- marfis$longitudedd +
+  (marfis$longitudemm / 60) +
+  (marfis$longitudess / 3600)
+
+marfis$LON <- marfis$LON * -1
+
+# Remove extraneous
+marfis <- dplyr::select(marfis,
+                        -latitudedd, -latitudemm, -latitudess,
+                        -longitudedd, -longitudemm, -longitudess, 
+                        -latitude, -longitude)
+# Check
+marfis <- marfis[!is.na(marfis$LON),]
+marfis <- marfis[!is.na(marfis$LAT),]
+# Plot
+marfis.sf <- st_as_sf(marfis, coords=c('LON', 'LAT'))
+st_crs(marfis.sf) <- 'EPSG:4326'
+# A few bad points
+marfis <- marfis[marfis$LON < -10,]
+marfis <- marfis[marfis$LAT < 50,]
+marfis.sf <- st_as_sf(marfis, coords=c('LON', 'LAT'))
+st_crs(marfis.sf) <- 'EPSG:4326'
+# Remove over land
+overland <- st_intersection(marfis.sf, coast)
+marfis2 <- marfis[marfis$trip %notin% overland$trip,]
+marfis.sf <- st_as_sf(marfis2, coords=c('LON', 'LAT'))
+st_crs(marfis.sf) <- 'EPSG:4326'
+
+## Trip specifics
+marfis2$gear <- as.factor(marfis2$gear)
+marfis2$nafo_unit <- as.factor(marfis2$nafo_unit)
+
+## Fish information
+# Assume NA value in catch is actually 0
+# Oh nevermind. Count is the correct column
+marfis2$total_num_bft_caught_trip <- NULL
+
+## Environment
+marfis2$water_temp2 <- as.numeric(marfis2$water_temp2)
+
+## Assign size classes
+# Create size classes to match US size classes
+size.class <- data.frame(
+  class = c('young_school', 'school', 'large_school',
+            'small_medium', 'large_medium', 'giant'),
+  wt_min_lbs = c(0.1, 14, 
+                 66, 135, 
+                 235, 310),
+  wt_max_lbs = c(13.999, 65.999,
+                 134.999, 234.999,
+                 309.999, 15000),
+  final_class=c('small', 'small', 'small', NA,
+                'large', 'large')
+)
+size.class$wt_min_kgs <- size.class$wt_min_lbs * 0.453592
+size.class$wt_max_kgs <- size.class$wt_max_lbs * 0.453592
+# Assign size classes by weight
+marfis2$weight_kgs <- marfis2$bft_landed_weight_lbs * 0.453592
+marfis2$bft_landed_weight_lbs <- NULL
+
+marfis2$size_class[marfis2$weight_kgs > 0 &
+                     marfis2$weight_kgs < 6.349834 ] <- 'small'
+marfis2$size_class[marfis2$weight_kgs >= 6.349834 &
+                     marfis2$weight_kgs< 29.936618] <- 'small'
+marfis2$size_class[marfis2$weight_kgs >=29.936618 &
+                     marfis2$weight_kgs< 61.234466] <- 'small'
+marfis2$size_class[marfis2$weight_kgs >=61.234466 &
+                     marfis2$weight_kgs< 106.593666] <- 'remove'
+marfis2$size_class[marfis2$weight_kgs >=106.593666 &
+                     marfis2$weight_kgs< 140.613066] <- 'large'
+marfis2$size_class[marfis2$weight_kgs >=140.613066 &
+                     marfis2$weight_kgs< 10000] <- 'large'
+
+marfis2 <- marfis2[marfis2$size_class !='remove',]
+marfis2$size_class <- as.factor(marfis2$size_class)
+
+## Final
+marfis3 <- dplyr::select(marfis2,
+                        size_class,
+                        trip, year,month, day, date_fished, seahours,
+                        LON, LAT, count, water_temp2)
+
+marfis4 <- marfis3 %>% count(trip, size_class)
+colnames(marfis4) <- c('trip', 'size_class', 'catch')
+
+# Merge back to full dataset
+marfis5 <- left_join(marfis3, marfis4, by=c('trip', 'size_class'))
+marfis5 <- marfis5[!is.na(marfis5$trip),]
+marfis5 <- unique(marfis5)
+
+marfis5 <- dplyr::select(marfis5, 
+                         -count)
+colnames(marfis5) <- c('Size_class', 'trip', 'year', 'month', 'day',
+                       'date_fished', 'fhours', 'lon', 'lat', 'sst', 'catch')
+
+# Don't save yet
+# There are times that fish with bio data have already been noted in the Hdata
+# Let's remove any size-classed bio data fish from Hdata
+marfis5$Size_class <- as.character(marfis5$Size_class)
+marfis5$Size_class[is.na(marfis5$Size_class)] <- 'Unknown'
+
+# Average spatial information- sometimes report multiple catch locations when 
+# there are multiple fish
+marfis6 <- marfis5
+marfis6 <- marfis5 %>% 
+  group_by(trip, Size_class) %>% 
+  summarise(mean.lat = mean(lat),
+            mean.lon = mean(lon),
+            mean.sst = mean(sst))
+marfis6 <- as.data.frame(marfis6)
+
+marfis6 <- left_join(marfis5, marfis6, by=c('trip', 'Size_class'))
+
+# Check if that works
+marfis6$londif <- abs(marfis6$lon - marfis6$mean.lon)
+marfis6$latdif <- abs(marfis6$lat - marfis6$mean.lat)
+
+bads <- marfis6[marfis6$latdif > 0 | marfis6$londif > 0,]
+
+badlat <- bads[bads$latdif > 0.25,]
+badlon <- bads[bads$londif > 0.25,]
+
+badtrips <- c(badlat$trip, badlon$trip)
+badtrips <- unique(badtrips)
+
+badtrips <- marfis6[marfis6$trip %in% badtrips,]
+badtrips <- badtrips[with(badtrips, order(trip)),]
+
+# Some of these are typos
+#1
+marfis6$lon[marfis6$trip == '22970'][1] <- 
+  marfis6$lon[marfis6$trip == '22970'][1] - 3
+#2
+marfis6$lat[marfis6$trip == '114216'][2] <- 
+  marfis6$lat[marfis6$trip == '114216'][2] + 1
+#3
+marfis6 <- marfis6[marfis6$trip != '115173',]
+#4
+marfis6$lat[marfis6$trip == '115577'] <- 44.2
+#5
+marfis6$lat[marfis6$trip == '116340'][3] <- 
+  marfis6$lat[marfis6$trip == '116340'][1]
+#6
+marfis6$lat[marfis6$trip == '119053'][4] <- 
+  marfis6$lat[marfis6$trip == '119053'][1]
+#7
+marfis6$lat[marfis6$trip == '147037'][2] <- 
+  marfis6$lat[marfis6$trip == '147037'][1]
+#8
+marfis6$lat[marfis6$trip == '180285'][1:2] <- 
+  marfis6$lat[marfis6$trip == '180285'][1:2] +1
+#9
+marfis6 <- marfis6[marfis6$trip != '180728',]
+#10
+marfis6$remove[marfis6$trip == 257573 & 
+                 marfis6$month == 9 &
+                 marfis6$day == 22] <- 'yes'
+marfis6 <- marfis6[is.na(marfis6$remove),]
+marfis6$remove <- NULL
+marfis6$catch[marfis6$trip == '257573'] <- 3
+#11
+marfis6$lat[marfis6$trip == '325401'][3] <- 
+  marfis6$lat[marfis6$trip == '325401'][3] -1
+#12
+marfis6$lat[marfis6$trip == '326822'][2] <- 
+  marfis6$lat[marfis6$trip == '326822'][1]
+#13
+marfis6 <- marfis6[marfis6$trip != '373903',]
+#14
+marfis6$lat[marfis6$trip == '391175'][3] <- 
+  marfis6$lat[marfis6$trip == '391175'][2]
+#15
+marfis6$lat[marfis6$trip == '392945'] <- 42.3
+#16
+marfis6$lon[marfis6$trip == '419592'][1] <- 
+  marfis6$lon[marfis6$trip == '419592'][1] - 0.6
+#17
+marfis6$lat[marfis6$trip == '443854'][3] <- 
+  marfis6$lat[marfis6$trip == '443854'][3] - 2
+#18
+marfis6$lon[marfis6$trip == '445704'][2] <- 
+  marfis6$lon[marfis6$trip == '445704'][2] + 2
+#19
+marfis6$lon[marfis6$trip == '469863'][4] <- 
+  marfis6$lon[marfis6$trip == '469863'][4] + 3
+#20
+marfis6$lat[marfis6$trip == '470852'][2] <- 
+  marfis6$lat[marfis6$trip == '470852'][2] -1
+#21
+marfis6 <- marfis6[marfis6$trip != '472458',]
+#22
+marfis6 <- marfis6[marfis6$trip != '515297',]
+#23
+marfis6$lon[marfis6$trip == '515370'][2] <- 
+  marfis6$lon[marfis6$trip == '515370'][2] + 3 
+#24
+marfis6$lon[marfis6$trip == '517082'][3] <- 
+  marfis6$lon[marfis6$trip == '517082'][3] -1 
+#25
+marfis6$lat[marfis6$trip == '534969'][2] <- 
+  marfis6$lat[marfis6$trip == '534969'][2] -2 
+#26
+marfis6$lon[marfis6$trip == '538403'][1] <- 
+  marfis6$lon[marfis6$trip == '538403'][1] +2 
+#27
+marfis6$lon[marfis6$trip == '538673'][3] <- 
+  marfis6$lon[marfis6$trip == '538673'][3] -2 
+
+# REdo
+marfis6 <- dplyr::select(marfis6, -mean.lat, -mean.lon, -mean.sst)
+marfis7 <- marfis6
+marfis7 <- marfis7 %>% 
+  group_by(trip, Size_class) %>% 
+  summarise(mean.lat = mean(lat),
+            mean.lon = mean(lon),
+            mean.sst = mean(sst))
+marfis7 <- as.data.frame(marfis7)
+
+marfis7 <- left_join(marfis6, marfis7, by=c('trip', 'Size_class'))
+
+# Check if that works
+marfis7$londif <- abs(marfis7$lon - marfis7$mean.lon)
+marfis7$latdif <- abs(marfis7$lat - marfis7$mean.lat)
+
+bads <- marfis7[marfis7$latdif > 0 | marfis7$londif > 0,]
+
+badlat <- bads[bads$latdif > 0.25,]
+badlon <- bads[bads$londif > 0.25,]
+
+badtrips <- c(badlat$trip, badlon$trip)
+badtrips <- unique(badtrips)
+
+badtrips <- marfis7[marfis7$trip %in% badtrips,]
+badtrips <- badtrips[with(badtrips, order(trip)),]
+# Looks good. Check that it all makes sense on a map.
+
+marfis7 <- dplyr::select(marfis7, 
+                          Size_class, trip, year, month, day, fhours, 
+                          mean.lon, mean.lat, mean.sst, catch)
+colnames(marfis7)[7] <- 'lon'
+colnames(marfis7)[8] <- 'lat'
+colnames(marfis7)[9] <- 'sst'
+
+marfis7 <- unique(marfis7)
+
+head(marfis7[with(marfis7, order(year,month, day, trip, Size_class, lat)),])
+
+# Check it on a map
+# REmove the one in Hudson Bay area
+marfis7 <- marfis7[marfis7$lat < 48,]
+marfis.sf <- st_as_sf(marfis7, coords=c('lon', 'lat'))
+st_crs(marfis.sf) <- 'EPSG:4326'
+ggplot() +
+  geom_sf(data=coast) +
+  geom_sf(data=marfis.sf, cex=0.6) +
+  coord_sf(xlim=c(st_bbox(marfis.sf)[1], st_bbox(marfis.sf)[3]),
+          ylim=c(st_bbox(marfis.sf)[2], st_bbox(marfis.sf)[4]))
+
+exists.in.bio <- hdata4[hdata4$trip %in% marfis7$trip,]
+hdata5 <- hdata4[hdata4$trip %notin% exists.in.bio$trip,]
+hdata5$Size_class <- 'Unknown'
+
+exists.in.h <- marfis7[marfis7$trip %in% hdata5$trip,]
+
+# We can merge these now
+hdata5$sst <- NA
+hdata5$data <- 'hdata'
+marfis7$data <- 'marfis'
+
+merged.data <- rbind(hdata5, marfis7)
+merged.data <- unique(merged.data)
+
+merged.data$trip.fish <- paste0(merged.data$trip, "_", merged.data$Size_class)
+test <- as.data.frame(table(merged.data$trip.fish))
+test <- subset(test, Freq != 1)
+
+merged.data$Var1 <- merged.data$trip.fish
+bads <- merged.data
+bads <- bads[bads$Var1 %in% test$Var1,]
+# This looks like a discrepancy in day the fish was reported vs day sailed or something
+# This truly doesn't matter much to us. Let's average and round day.
+
+marfis8 <- marfis7 %>% 
+  group_by(trip, Size_class) %>% 
+  summarise(mean.day = round(mean(day)))
+
+marfis8 <- as.data.frame(marfis8)
+marfis9 <- left_join(marfis7, marfis8, by=c('trip', 'Size_class'))
+# There is no September 31st. Remove.
+marfis9 <- marfis9[marfis9$trip %notin% c('57064', '57065'),]
+marfis9 <- dplyr::select(marfis9,
+                         Size_class, trip, year, month, mean.day, fhours,
+                         lon, lat, sst, catch, data)
+colnames(marfis9)[5] <- 'day'
+
+# Check that nrow sizeclass-trip == catch 
+marfis9$size.trip <- paste0(marfis9$Size_class, '_', marfis9$trip)
+marfis9$flag <- 0
+marfis.list <- split(marfis9, f=marfis9$size.trip)
+for(i in 1:length(marfis.list)){
+  if(nrow(marfis.list[[i]]) > marfis.list[[i]]$catch[1]){
+    marfis.list[[i]]$flag <- 1
+  }
+  if(nrow(marfis.list[[i]]) < marfis.list[[i]]$catch[1]){
+    marfis.list[[i]]$flag <- 2
+  }
+}
+marfis9 <- do.call(rbind, marfis.list)
+rownames(marfis9) <- NULL
+bads <- marfis9[marfis9$flag !=0,]
+# There are 945 trips where bio information is mising for 1 or more fish
+# Without that information, we cannot assign class. Remove these fish.
+marfis9$flag <- 0
+marfis.list <- split(marfis9, f=marfis9$size.trip)
+for(i in 1:length(marfis.list)){
+  if(nrow(marfis.list[[i]]) < marfis.list[[i]]$catch[1]){
+    marfis.list[[i]]$flag <- 2
+    marfis.list[[i]]$catch <- nrow(marfis.list[[i]])
+  }
+}
+marfis9 <- do.call(rbind, marfis.list)
+rownames(marfis9) <- NULL
+bads <- marfis9[marfis9$flag !=0,]
+# I think that should do it.
+marfis9 <- dplyr::select(marfis9, -flag, -size.trip)
+
+# Merge
+merged.data <- rbind(hdata5, marfis9)
+
+merged.data <- unique(merged.data)
+test <- as.data.frame(table(merged.data$trip.fish))
+test <- subset(test, Freq != 1)
+bads <- merged.data
+bads <- bads[bads$Var1 %in% test$Var1,]
+# No bads left
+
+merged.data <- dplyr::select(merged.data,
+                             Size_class, trip, year, month, day, fhours,
+                             lon, lat, sst, catch, data)
+merged.data <- as.data.frame(merged.data)
+
+# That's it.
+can.comm.data <- merged.data
+rm(badlat, badlon, bads, badtrips, can.comm.hdata, coast, exists.in.bio,
+   exists.in.h, hdata4, hdata5, marfis, marfis.list, marfis.bftlog,
+   marfis2, marfis3, marfis4, marfis5, marfis6, marfis7, marfis8, marfis9,
+   marfis.sf, overland, size.class, merged.data, test, i)
+```
+
+```{r mergecan}
+# Load data
+dat <- read.csv(here('Data/Clean/BFT_BothCountries_VAST.csv'))
+dat <- dat[dat$location == 'can',]
+
+# View
+brief <- dat[1:6,]
+brief$sstsource <- NULL; brief$depthsource <- NULL
+brief$tourn <- NULL
+brief$location <- NULL
+brief$id <- as.numeric(as.factor(brief$id))
+colnames(brief) <- c('Size', 'Trip\nID', 'Year', 'Month', 'Day', 
+                    'Hours\nfished', 'nCatch', 'SST\n(C)', 'Depth\n(m)',
+                    'Pressure', 'NAO', 'AMO', 'Lon', 'Lat')
+
+# Table
+brief %>%
+  kable(caption = "Canadian commercial data example",
+        booktabs=TRUE) %>%
+  kableExtra::kable_styling(
+    latex_options = c("HOLD_position")) %>% 
+  kableExtra::landscape()
+
+rm(brief)
+
+```
+
+```{r canadianplot, fig.cap='Fig. 3: Spatial distribution of Canadian commercial catch'}
+dat_sf <- st_as_sf(dat, coords=c('lon', 'lat'))
+st_crs(dat_sf) <- "EPSG:4326"
+coast <- ecodata::coast
+coast <- st_transform(coast, "EPSG:4326")
+
+ggplot() +
+  geom_sf(data=coast, fill='gray')+
+  geom_sf(data=dat_sf, cex=0.6) +
+  coord_sf(xlim=c(-69, -56),
+           ylim=c(39, 48))
+
+rm(coast, dat, dat_sf)
+```
+
+## Data needs
+There are a few environmental variables that have not yet been incorporated into the resulting data. I have created a VAST model of prey distribution based on NOAA herring, menhaden, and mackerel observer data. However, these data do not have 0 values (an important part of a VAST model) and do not have any coverage in Canadian waters. It would be best to fill out the data from other sources to get better models of prey spatiotemporal density.
+
+Chloropyll was noted as a potential covariate for BFT distribution, but I have not yet found a data source that has complete coverage in our spatial and temporal domains. VAST models cannot tolerate missing values for density covariates, and the many gaps in MODIS data caused by cloud coverage are currently preventing me from including chlorophyll data. Suggestions are welcomed.
+
+Wind direction and velocity have not yet been incorporated. Ideally, we would have information on the wind direction and velocity at the exact space and time of each tuna observation, though I could extract this information from data with larger spatial grain. I have spent less time looking for a source for these data. Suggestions are welcomed.
+
+# VAST
+VAST models were used to estimate BFT spatial density over time and create joint indices of abundance using all available American and Canadian catch data. VAST is a framework for implementing spatial delta-generalized linear mixed models (delta-GLMM) and can be manipulated to provide estimates for multiple categories of interest and spatial strata [@thorson_accounting_2017 @thorson_2019]. It is structured to utilize two linear predictors; the first linear predictor estimates encounter probability, and the second linear predictor estimates catch rates. The first linear predictor can be represented as
+
+$$\rho_1(i) = \beta_1(c_i, t_i) + \omega_1^*(s_i, c_i) + \varepsilon_1^*(s_i, c_i, t_i) + \eta_1(v_i, c_i) + \nu_1(c_i, t_i)$$
+
+where $\rho_1(i)$ is the predictor for observation _i_ for category $c_i$ at location $s_i$ and time $t_i$. $\beta_1(c_i, t_i)$ represents temporal variation for each category and time, $\omega_i(s_i, c_i)$ represents spatial variation for each location and category, $\varepsilon_1(s_i, c_i, t_i)$ represents spatiotemporal variation for each location, category, and time, $\eta_1(v_i, c_i)$ represents vessel effects for each vessel and category, and $\nu_1(c_i, t_i)$ represents the effect of density covariates for each category and time. The second linear predictor is structured the same way. Both linear predictors incorporate fixed and random effects, and spatial and spatiotemporal variation are approximated as Gaussian Markov random fields [@thorson_2015 @thorson_comparing_2017 @thorson_2019].
+
+Implementation of VAST models requires several structural and data inclusion decisions, as outlined in @thorson_2019. Decisions used in this effort will be discussed in the following subsections.
+
+## Response variable and effort adjustment
+Our data provide information on the number of fish of each size group caught during each fishing trip, as well as the number of hours fished on that trip. Gear type varies and this likely affects catchability and actual effort. For now, catch will be adjusted for effort by dividing the catch by number of hours fished. 
+
+VAST models require an input for effort to scale the response variable. For most fishery-independent surveys, this input would be similar to area swept. For this fishery-dependent dataset utilizing multiple gears, we have already accounted for effort in our manipulation of the response variable. Therefore, we will assign effor to be a unitless 1 for all observations.
+
+## Density and Catchability Covariates
+VAST allows for the effects of both density and catchability covariates to be included in modeling efforts. Catchability covariates are processes one would expect to affect the ability to observe the target organism without necessarily affecting the distribution of the organism. Density covariates are processes that directly affect the distribution of the target organism, regardless of ability to observe it. Both covariates affect the catch rate of the target organism, but only density covariates are used to predict target organism density within the spatial domain. Therefore, VAST "controls for" catchability covariates and "conditions on" density covariates. VAST is unable to distinguish whether potential covariates should be treated as catchability or density covariates; this must be decided with theoretical insight from an analyst. 
+
+In this model, we will utilize the environmental covariates and basin-scale climate indices as density covariates. Density covariates were chosen after a model selection process to determine their utility to describe patterns in BFT spatiotemporal density. Currently, a simple linear model is used to describe the effects of these covariates on BFT CPUE. In the future, other models will be tested; it is likely that the best model will be more fluid, like a generalized additive model using polynomial splines.
+
+We will not explicitly include catchability covariates, but wil allow for variation in catchability between the American and Canadian fisheries by including them as "vessel effects."
+
+## Error structure
+As recommended by model developers for adjusted-effort models, a delta-lognormal distribution was chosen for the first linear predictor and an alternative "Poisson-link delta-model"was chosen for the second linear predictor.
+
+## Spatial, temporal, and spatiotemporal effects
+Spatial, temporal, and spatiotemporal autocorrelation can be included in both linear predictors. A model selection process was used to justify the use of spatial and spatiotemporal random effects in the first and second linear predictors. The intercept for each linear predictor was defined as a fixed effect for each time step-- this ensures independent estimates of abundance for each time step, which is most appropriate for creating abundance indices [@thorson_2019]. Instead, a temporal component was estimated for the spatiotemporal components in both linear predictors. This is recommended for indices generated by multiple data sources that do not necessarily sample the same locations in every time step [@thorson_2019]. Without this estimation, unrealistic "hot spots" may develop or be carried through the time series when this is inappropriate. The use of a temporal component for spatiotemporal components can also help interpolate density in unsampled time steps [@thorson_2019]. In this model, temporal correlation of these spatiotemporal variations was set as an AR1 process.
+
+# Preliminary results
+
+```{r vastresults}
+
+
+```
+
+
+
+# Model caveats
+Both the American and Canadian datasets report very few sampling events with 0 catch. In the American dataset, the 1993-2002 period has no zeros reported. This likely skews the American indices to incorrectly report high BFT abundance in this period, despite the AR1 temporal correlation process.
+
+The clear age-based spatial structure of BFT (smaller BFT prefer warmer southerly waters, larger BFT prefer colder northerly waters) likely causes issues in the generation of abundance indices. For example, the lack of small BFT in Canadian waters results in very little information for the model to predict and interpolate small BFT abundance in this area.
