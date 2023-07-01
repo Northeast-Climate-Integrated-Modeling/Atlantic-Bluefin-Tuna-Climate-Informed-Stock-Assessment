@@ -2,14 +2,23 @@
 \xpginauxfiletrue 
 \selectlanguage *{english}
 \contentsline {section}{\numberline {1}Motivation}{1}{section.1}%
-\contentsline {section}{\numberline {2}BFT data requirements}{2}{section.2}%
+\contentsline {section}{\numberline {2}BFT data}{2}{section.2}%
 \contentsline {subsection}{\numberline {2.1}Model domains}{2}{subsection.2.1}%
 \contentsline {subsection}{\numberline {2.2}BFT size categories}{3}{subsection.2.2}%
-\contentsline {subsection}{\numberline {2.3}US BFT Recreational Catch}{4}{subsection.2.3}%
-\contentsline {subsection}{\numberline {2.4}Canadian BFT Commercial Landings}{6}{subsection.2.4}%
-\contentsline {section}{\numberline {3}Model structure}{8}{section.3}%
-\contentsline {subsection}{\numberline {3.1}Response variable and effort adjustment}{8}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Spatial, Temporal, Spatio-temporal variation}{8}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Density covariates}{8}{subsection.3.3}%
-\contentsline {section}{\numberline {4}Preliminary results}{8}{section.4}%
+\contentsline {subsection}{\numberline {2.3}Environmental covariates}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}US BFT Recreational Catch}{4}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Canadian BFT Commercial Landings}{6}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Data needs}{8}{subsection.2.6}%
+\contentsline {section}{\numberline {3}VAST}{8}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Response variable and effort adjustment}{9}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Density and Catchability Covariates}{9}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Error structure}{10}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Spatial, temporal, and spatiotemporal effects}{10}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Preliminary results}{11}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Joint indices of abundance}{11}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Maps of spatial density}{12}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Spatial metrics and range shifts}{14}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Model caveats}{16}{section.5}%
+\contentsline {section}{\numberline {6}GitHub}{16}{section.6}%
+\contentsline {section}{References}{16}{section*.13}%
 \xpginauxfilefalse 

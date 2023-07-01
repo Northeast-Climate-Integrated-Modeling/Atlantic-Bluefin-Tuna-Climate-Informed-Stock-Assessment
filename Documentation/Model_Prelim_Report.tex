@@ -1,20 +1,24 @@
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode}{hyperref}
 \PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
 %
 \documentclass[
 ]{article}
 \usepackage{amsmath,amssymb}
-\usepackage{lmodern}
 \usepackage{iftex}
 \ifPDFTeX
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
   \usepackage{textcomp} % provide euro and other symbols
 \else % if luatex or xetex
-  \usepackage{unicode-math}
+  \usepackage{unicode-math} % this also loads fontspec
   \defaultfontfeatures{Scale=MatchLowercase}
   \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
 \fi
 % Use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
@@ -84,6 +88,109 @@
 \newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
 \newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
 \newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+% !TEX TS-program = LuaLaTeX
+%------------------------------- Preamble ------------------------------------------------------
+%\documentclass[12pt,a4paper,english]{article} % document type and language
+
+\usepackage{babel}   			% multi-language support
+\usepackage{xcolor}			% text color
+\usepackage{float}   				% floats
+\usepackage{url}     				% urls
+\usepackage{fontspec} 			% font
+		\setmainfont{Calibri}
+\usepackage{geometry} 		% margins
+\usepackage{titlesec}			% section font size
+		\titleformat*{\section}{\Large\bfseries}
+		\titleformat*{\subsection}{\normalsize\itshape\bfseries}
+\usepackage{polyglossia}		% Indent first paragraph in section
+		\setmainlanguage{english}
+		%\PolyglossiaSetup{english}{indentfirst=true} % wrong
+		\SetLanguageKeys{english}{indentfirst=true}
+\usepackage{titlesec}			% Format titles
+		\titlespacing\section{0pt}{2pt plus 1pt minus 1pt}{0pt plus 1pt minus 1pt}
+		\titlespacing\subsection{0pt}{2pt plus 1pt minus 1pt}{0pt plus 1pt minus 1pt}
+		\titlespacing\subsubsection{0pt}{2pt plus 1pt minus 1pt}{0pt plus 1pt minus 1pt}
+%\usepackage[none]{hyphenat}	% prevent word breaks
+
+
+% Set up the fonts
+%\usepackage[urw-palatino]{mathdesign}
+%\usepackage[T1]{fontenc}
+
+
+% Set the language for 508
+\usepackage{hyperref}
+\hypersetup{
+  pdftitle = {title},
+  pdflang = en-US}
+
+% Add accessibility support from http://www.richschwinn.com/accessibility
+\RequirePackage{accsupp}
+\RequirePackage{pdfcomment}
+\newcommand{\AccTool}[2]{\BeginAccSupp{method=pdfstringdef,unicode,Alt={{#1}}}\pdftooltip{{#2}}{{#1}}\EndAccSupp{}}
+
+
+% Set up the headers and footers
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{ifthen}
+%\usepackage{everypage-1x}
+\usepackage{float}
+%\usepackage{subfig}
+%\usepackage{subcaption}
+
+% Avoid struggling over figure and table float in Rmarkdown
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][2] {
+    \expandafter\origfigure\expandafter[H]
+} {
+    \endorigfigure
+}
+
+\let\origtable\table
+\let\endorigtable\endtable
+\renewenvironment{table}[1][2] {
+    \expandafter\origtable\expandafter[H]
+} {
+    \endorigtable
+}
+
+% First page has the large title and NOAA logo
+%\pagestyle{fancy}
+%\fancyhf{}
+%\setlength\headheight{40pt}
+%\fancyheadoffset[L]{0.5cm}
+%\cfoot{\thepage}
+%
+%\fancyheadinit{%
+%   \ifthenelse{\value{page}=4}%
+%      {\fancyhead[R]{\includegraphics[width=40pt]{images/NOAA_logo.png} \\ \textsf{\emph{March 17, 2022}}}
+%       \fancyhead[L]{\textsf{\LARGE State of the Ecosystem 2022: Mid-Atlantic}}
+%      }%
+%      {\fancyhead[R]{}
+%       \fancyhead[L]{\textsf{\emph{State of the Ecosystem 2022: Mid-Atlantic}}}
+%      }
+%}
+
+
+
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Make caption fonts a bit smaller
+\usepackage[font={small}]{caption}
+
+
+% Change section labels to san serif
+\usepackage{sectsty}
+\allsectionsfont{\normalfont\sffamily\bfseries}
+
+%\usepackage{lineno}
+%\linenumbers
+
+\usepackage{setspace}
+\doublespacing
 \usepackage{setspace}\onehalfspacing
 \usepackage{float}
 \usepackage{caption}
@@ -107,11 +214,15 @@
 \fi
 \IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
-\urlstyle{same} % disable monospaced font for URLs
+\urlstyle{same}
 \hypersetup{
   pdftitle={Bluefin Combined Index Model V1},
   pdfauthor={Katie Lankowicz},
-  hidelinks,
+  colorlinks=true,
+  linkcolor={Maroon},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={blue},
   pdfcreator={LaTeX via pandoc}}
 
 \title{Bluefin Combined Index Model V1}
@@ -122,6 +233,7 @@
 \maketitle
 
 {
+\hypersetup{linkcolor=}
 \setcounter{tocdepth}{2}
 \tableofcontents
 }
@@ -175,28 +287,6 @@ BFT data from American and Canadian fisheries are in variable formats and need t
 Currently, the model's temporal domain is 1993 - 2020. Though BFT total catch data were recorded prior to 1993, information to determine the size of each fish was not reliably recorded. The final model will include indices for multiple BFT size classes, and so data without associated length or weight information is not useful. The temporal domain currently ends at 2020 because that is the most recent year with Canadian catch data. American catch data ends at 2021. The temporal domain could be extended with new information.
 
 The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included. The model will estimate indices of abundance within both of the spatial strata-- US EEZ waters and Canadian EEZ waters.
-
-\begin{verbatim}
-## Reading layer `NWAtlantic' from data source 
-##   `C:\Users\klankowicz\Documents\GitHub\Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment\Data\GIS\NWAtlantic.shp' 
-##   using driver `ESRI Shapefile'
-## Simple feature collection with 1 feature and 1 field
-## Geometry type: POLYGON
-## Dimension:     XY
-## Bounding box:  xmin: -8460792 ymin: 4196772 xmax: -7313632 ymax: 5648546
-## Projected CRS: WGS 84 / Pseudo-Mercator
-\end{verbatim}
-
-\begin{verbatim}
-## Reading layer `CanadaEEZ' from data source 
-##   `C:\Users\klankowicz\Documents\GitHub\Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment\Data\GIS\CanadaEEZ.shp' 
-##   using driver `ESRI Shapefile'
-## Simple feature collection with 1 feature and 4 fields
-## Geometry type: POLYGON
-## Dimension:     XY
-## Bounding box:  xmin: -7541061 ymin: 4871320 xmax: -6131963 ymax: 5909353
-## Projected CRS: WGS 84 / Pseudo-Mercator
-\end{verbatim}
 
 \begin{figure}
 \centering
@@ -361,11 +451,19 @@ As recommended by model developers for adjusted-effort models, a delta-lognormal
 
 Spatial, temporal, and spatiotemporal autocorrelation can be included in both linear predictors. A model selection process was used to justify the use of spatial and spatiotemporal random effects in the first and second linear predictors. The intercept for each linear predictor was defined as a fixed effect for each time step-- this ensures independent estimates of abundance for each time step, which is most appropriate for creating abundance indices (\protect\hyperlink{ref-thorson_2019}{Thorson 2019}). Instead, a temporal component was estimated for the spatiotemporal components in both linear predictors. This is recommended for indices generated by multiple data sources that do not necessarily sample the same locations in every time step (\protect\hyperlink{ref-thorson_2019}{Thorson 2019}). Without this estimation, unrealistic ``hot spots'' may develop or be carried through the time series when this is inappropriate. The use of a temporal component for spatiotemporal components can also help interpolate density in unsampled time steps (\protect\hyperlink{ref-thorson_2019}{Thorson 2019}). In this model, temporal correlation of these spatiotemporal variations was set as an AR1 process.
 
+\newpage
+
 \hypertarget{preliminary-results}{%
 \section{Preliminary results}\label{preliminary-results}}
 
 \hypertarget{joint-indices-of-abundance}{%
 \subsection{Joint indices of abundance}\label{joint-indices-of-abundance}}
+
+Indices of abundance for the early period in the model's temporal domain (1993-2000) are highly variable and look to have some issues due to data quality. More work will need to be done to better account for the lack of observations with 0 tuna in this time period.
+
+Model outputs indicate that large BFT CPUE is high and increasing in Canadian waters, and generally has been since the early 2000s. Large BFT CPUE is much lower in American waters, and has a much slower rate of increase.
+
+Small BFT were rarely observed in Canadian waters, and so the index of abundance is extremely low for the entire temporal domain. As the Canadian data is commercial, it is likely that the lack of small BFT is an artifact of fishery selection. It is unlikely that there are 0 small BFT in Canadian waters, as the model suggests. Small BFT are more abundant in American waters, but the model indicates a rapid decrease in small BFT CPUE in the 90s through early 2000s, and a more stable but lower small BFT CPUE since around 2010.
 
 \begin{figure}
 \centering
@@ -373,20 +471,30 @@ Spatial, temporal, and spatiotemporal autocorrelation can be included in both li
 \caption{Fig. 4: Joint indices of abundance}
 \end{figure}
 
+\newpage
+
 \hypertarget{maps-of-spatial-density}{%
 \subsection{Maps of spatial density}\label{maps-of-spatial-density}}
+
+Small BFT have typically had highest density in American waters. Historically, areas of highest density were in Southern New England. More recently, these pockets of high density seem to have shifted south into the Mid-Atlantic Bight.
 
 \begin{figure}
 \centering
 \includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png}
-\caption{Fig. 5:Small cod spatio-temporal density}
+\caption{Fig. 5:Small BFT spatio-temporal density}
 \end{figure}
+
+\newpage
+
+Large BFT spatial density is almost the opposite of small BFT. Typically, large BFT density is highest in Canadian waters. The early period of the model indicated areas of high density near Cape Cod, though this is likely caused by the lack of observations with 0 captured tuna prior to 2003. After 2003, large BFT density was highest on eastern Georges Bank and the Scotian Shelf. Density of large BFT south of Cape Cod has declined dramatically throughout the modeled period.
 
 \begin{figure}
 \centering
 \includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png}
-\caption{Fig. 6: Large cod spatio-temporal density}
+\caption{Fig. 6: Large BFT spatio-temporal density}
 \end{figure}
+
+\newpage
 
 \hypertarget{spatial-metrics-and-range-shifts}{%
 \subsection{Spatial metrics and range shifts}\label{spatial-metrics-and-range-shifts}}
@@ -399,13 +507,17 @@ The model needs to be run once for each spatial strata in order to generate spat
 \caption{Fig. 7: Spatial metrics for small BFT in Canadian EEZ}
 \end{figure}
 
+\newpage
+
+It is interesting that the center of gravity for the small BFT stock in Canadian waters is typically further offshore than the large BFT stock. This is likely caused by the limited number of small BFT found in the Canadian EEZ and does not accurately reflect the true center of gravity for small BFT.
+
 \begin{figure}
 \centering
 \includegraphics{C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png}
 \caption{Fig. 8: Spatial metrics for large BFT in Canadian EEZ}
 \end{figure}
 
-It is interesting that the center of gravity for the small BFT stock in Canadian waters is typically further offshore than the large BFT stock. This is likely caused by the limited number of small BFT found in the Canadian EEZ and does not accurately reflect the true center of gravity for small BFT.
+\newpage
 
 \hypertarget{model-caveats}{%
 \section{Model caveats}\label{model-caveats}}
@@ -413,6 +525,15 @@ It is interesting that the center of gravity for the small BFT stock in Canadian
 Both the American and Canadian datasets report very few sampling events with 0 catch. In the American dataset, the 1993-2002 period has no zeros reported. This likely skews the American indices to incorrectly report high BFT abundance in this period, despite the AR1 temporal correlation process.
 
 The clear age-based spatial structure of BFT (smaller BFT prefer warmer southerly waters, larger BFT prefer colder northerly waters) likely causes issues in the generation of abundance indices. For example, the lack of small BFT in Canadian waters results in very little information for the model to predict and interpolate small BFT abundance in this area.
+
+\hypertarget{github}{%
+\section{GitHub}\label{github}}
+
+To follow model progress live, please \href{https://github.com/Northeast-Climate-Integrated-Modeling/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment}{visit the Github repository} for the project.
+
+\hypertarget{references}{%
+\section*{References}\label{references}}
+\addcontentsline{toc}{section}{References}
 
 \hypertarget{refs}{}
 \begin{CSLReferences}{1}{0}
