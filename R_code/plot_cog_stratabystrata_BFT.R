@@ -269,17 +269,17 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
         guide = guide_colourbar(nbin = 100, draw.ulim = FALSE, draw.llim = FALSE)
       )+
       geom_sf(data=t.spring, aes(col=Year)) +
-      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == 'US',])[1], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[3]),
-               ylim=c(st_bbox(stocks[stocks$STOCK == 'US',])[2], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[4])) +
+      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == 'Canada',])[1], 
+                      st_bbox(stocks[stocks$STOCK == 'Canada',])[3]),
+               ylim=c(st_bbox(stocks[stocks$STOCK == 'Canada',])[2], 
+                      st_bbox(stocks[stocks$STOCK == 'Canada',])[4])) +
       xlab("Longitude") + ylab("Latitude")
     
     spring <- ggarrange(spring.vis, spring.lines, ncol=2) + bgcolor("white") 
     
     ggsave(spring,
            filename=paste0(here(), "/Plot_output_3/location.info.",
-                           category_names[i], ".spring.US.png"),
+                           category_names[i], ".spring.Canada.png"),
            width = 10, height = 8, units='in')
 }
 
