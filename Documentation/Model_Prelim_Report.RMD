@@ -144,7 +144,7 @@ size.tab <- data.frame(
 )
 
 size.tab %>%
-  kable(caption = "Table 1: Bluefin tuna size classes",
+  kable(caption = "Bluefin tuna size classes",
         booktabs=TRUE,
         col.names=c('Size class', 'Grouping', 'Curved Fork\nLength', 
                     'Pectoral Curved\nFork Length', 'Weight (lbs)')) %>%
@@ -673,7 +673,7 @@ colnames(brief) <- c('Trip\nID', 'Year', 'Month', 'Day',
 
 # Table
 brief %>%
-  kable(caption = "Table 2: American Large Pelagic Survey example",
+  kable(caption = "American Large Pelagic Survey example",
         booktabs=TRUE) %>%
   kableExtra::kable_styling(
     latex_options = c("HOLD_position")) %>% 
@@ -1434,7 +1434,7 @@ colnames(brief) <- c('Trip\nID', 'Year', 'Month', 'Day',
 
 # Table
 brief %>%
-  kable(caption = "Table 3: Canadian commercial data example",
+  kable(caption = "Canadian commercial data example",
         booktabs=TRUE) %>%
   kableExtra::kable_styling(
     latex_options = c("HOLD_position")) %>% 
@@ -1495,7 +1495,7 @@ dataneeds <- data.frame(
 )
 
 dataneeds %>%
-  kable(caption = "Table 4: Data needs",
+  kable(caption = "Data needs",
         booktabs=TRUE,
         col.names=c('Data source', 'Spatial area', 'Years')) %>%
   kableExtra::kable_styling(
