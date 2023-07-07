@@ -84,7 +84,7 @@ BFT data from American and Canadian fisheries are in variable formats and need t
 * Date
 * Spatial location (latitude and longitude, decimal degrees)
 * Number of hours spent fishing
-* Number of BFT caught in both large and small size groups
+* Number of large BFT caught
 * Sea surface temperature
 * Water depth
 * Sea level pressure
@@ -95,7 +95,7 @@ BFT data from American and Canadian fisheries are in variable formats and need t
 * Local prey biomass
 
 ## Model domains
-Currently, the model's temporal domain is 1993 - 2020. Though BFT total catch data were recorded prior to 1993, information to determine the size of each fish was not reliably recorded. The final model will include indices for multiple BFT size classes, and so data without associated length or weight information is not useful. The temporal domain currently ends at 2020 because that is the most recent year with Canadian catch data. American catch data ends at 2021. The temporal domain could be extended with new information.
+Currently, the model's temporal domain is 1993 - 2020. Though BFT total catch data were recorded prior to 1993, information to determine the size of each fish was not reliably recorded. The final model will only include data for large BFT (see following section), and so data without associated length or weight information is not useful. The temporal domain currently ends at 2020 because that is the most recent year with Canadian catch data. American catch data ends at 2021. The temporal domain of the model could be extended to 2023 with updated information from both the American and Canadian fisheries.
 
 The model spatial domain is the combined area of American and Canadian exclusive economic zones (EEZs) in the Northwest Atlantic, bounded on the south by Cape Hatteras, North Carolina and on the north by Cape North, Nova Scotia. The model does not consider the Gulf of Saint Lawrence, nor is any tuna catch data from that area included. The model will estimate indices of abundance within both of the spatial strata-- US EEZ waters and Canadian EEZ waters.
 
@@ -126,6 +126,8 @@ ggplot() +
 ## BFT size categories
 BFT are categorized into six size classes by both weight and length. BFT migrations and habitat use are expected to vary with age, and so the ideal model will generate separate indices and spatial metrics for different age groupings. There is not enough information to do this for each of the six size classes, and so the size class information was pooled into two groupings: small and large. Small BFT are 144 cm (56.7 in) and shorter, while large BFT are longer than 177 cm (69.7 in). This structure was chosen to match the structure of current US handline BFT indices. Because the "Small medium" size class straddles the line between groups, these fish have been excluded from analysis.
 
+After initial data exploration, it was determined that too few small BFT were caught in Canada to generate robust indices of abundance. Therefore, this model will only consider large BFT-- tuna which fall within the "large-medium" or "giant" size classes.
+
 BFT were categorized according to length, preferentially. If no length information was recorded, weight was used to categorize. If neither length nor weight information was recorded for a fish, it could not be included in analysis.
 
 ```{r size-table}
@@ -142,7 +144,7 @@ size.tab <- data.frame(
 )
 
 size.tab %>%
-  kable(caption = "Bluefin tuna size classes",
+  kable(caption = "Table 1: Bluefin tuna size classes",
         booktabs=TRUE,
         col.names=c('Size class', 'Grouping', 'Curved Fork\nLength', 
                     'Pectoral Curved\nFork Length', 'Weight (lbs)')) %>%
@@ -652,19 +654,26 @@ rm(badvals, bft_sf, dat, dat.list, dat2, inwat, nwat, size.tab,
 # Load data
 dat <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata.csv'))
 
+# Order
+dat <- dat[with(dat, order(year, month, day)),]
+rownames(dat) <- NULL
+
 dat$sstsource <- NULL; dat$depthsource <- NULL; dat$prey <- NULL
+
+dat <- subset(dat, dat$Size_class == 'large')
+dat$Size_class <- NULL
 
 # View
 brief <- dat[1:6,]
 brief$tourn <- NULL
-brief$id <- as.numeric(as.factor(brief$id))
-colnames(brief) <- c('Size', 'Trip\nID', 'Year', 'Month', 'Day', 
+brief$id <-seq(1:nrow(brief))
+colnames(brief) <- c('Trip\nID', 'Year', 'Month', 'Day', 
                     'Hours\nfished', 'Lon', 'Lat', 'nCatch',
                     'SST\n(C)', 'Depth\n(m)', 'Pressure', 'NAO', 'AMO')
 
 # Table
 brief %>%
-  kable(caption = "American Large Pelagic Survey example",
+  kable(caption = "Table 2: American Large Pelagic Survey example",
         booktabs=TRUE) %>%
   kableExtra::kable_styling(
     latex_options = c("HOLD_position")) %>% 
@@ -691,7 +700,7 @@ rm(coast, dat, dat_sf)
 ## Canadian BFT Commercial Landings
 Catch and effort data for the Canadian commercial BFT fishery are recorded in commercial logbooks. We will only be working with commercial data from the Southwest Nova Scotia region, though data exists for the Gulf of Saint Lawrence region as well. The same data filters regarding fishing hours and month fished applied to the US data were applied to the Canadian data. Though the US recreational fishery is likely all rod and reel, the Canadian commercial fishery also includes harpoon and tended line gear. This could later inform some model structure decisions.
 
-Data collection methods changed in 2003, and so the data are stored across two sets of files (Commercial Landings 95-03, Historical Data. These needed to be cleaned and merged. This process can be viewed in the accompanying RMarkdown document. An example of results will also be provided.
+Data collection methods changed in 2003, and so the data are stored across two sets of files (Commercial Landings 95-03, Historical Data). These needed to be cleaned and merged. This process can be viewed in the accompanying RMarkdown document. An example of results will also be provided.
 
 There are some concerns with the historic (1993-2002) Canadian data. The data have several columns that I cannot make sense of without metadata. Although I assume I have only been provided with BFT catch, there is a column for species landed in the data. The values within this column are numeric (252-256), and I do not know what these numbers mean. For now, I have made the assumption that all these species codes refer to BFT. In the future, I can subset out non-BFT data if I am made aware that some of these species codes are not BFT.
 
@@ -1407,20 +1416,25 @@ rm(badlat, badlon, bads, badtrips, can.comm.hdata, coast, exists.in.bio,
 # Load data
 dat <- read.csv(here('Data/Clean/BFT_BothCountries_VAST.csv'))
 dat <- dat[dat$location == 'can',]
+dat <- subset(dat, Size_class == 'large')
+dat$Size_class <- NULL
+
+dat <- dat[with(dat, order(year, month, day)),]
+rownames(dat) <- NULL
 
 # View
 brief <- dat[1:6,]
 brief$sstsource <- NULL; brief$depthsource <- NULL
 brief$tourn <- NULL
 brief$location <- NULL
-brief$id <- as.numeric(as.factor(brief$id))
-colnames(brief) <- c('Size', 'Trip\nID', 'Year', 'Month', 'Day', 
+brief$id <- seq(1:nrow(brief))
+colnames(brief) <- c('Trip\nID', 'Year', 'Month', 'Day', 
                     'Hours\nfished', 'nCatch', 'SST\n(C)', 'Depth\n(m)',
                     'Pressure', 'NAO', 'AMO', 'Lon', 'Lat')
 
 # Table
 brief %>%
-  kable(caption = "Canadian commercial data example",
+  kable(caption = "Table 3: Canadian commercial data example",
         booktabs=TRUE) %>%
   kableExtra::kable_styling(
     latex_options = c("HOLD_position")) %>% 
@@ -1446,12 +1460,48 @@ rm(coast, dat, dat_sf)
 ```
 
 ## Data needs
-There are a few environmental variables that have not yet been incorporated into the resulting data. I have created a VAST model of prey distribution based on NOAA herring, menhaden, and mackerel observer data. However, these data do not have 0 values (an important part of a VAST model) and do not have any coverage in Canadian waters. It would be best to fill out the data from other sources to get better models of prey spatiotemporal density.
+There are a few environmental variables that have not yet been incorporated into the resulting data. I have created a VAST model of prey distribution based on NOAA herring, menhaden, and mackerel observer data. However, these data do not have 0 values (an important part of a VAST model) and do not have any coverage in Canadian waters. I can work with catch data that only have positive catch (no 0s), but it would be best to fill out the data with information from other sources to get better models of prey spatiotemporal density.
 
-Chloropyll was noted as a potential covariate for BFT distribution, but I have not yet found a data source that has complete coverage in our spatial and temporal domains. VAST models cannot tolerate missing values for density covariates, and the many gaps in MODIS data caused by cloud coverage are currently preventing me from including chlorophyll data. Suggestions are welcomed.
+Chlorophyll was noted as a potential covariate for BFT distribution, but I have not yet found a data source that has complete coverage in our spatial and temporal domains. VAST models cannot tolerate missing values for density covariates, and the many gaps in MODIS data caused by cloud coverage are currently preventing me from including chlorophyll data. Suggestions are welcomed.
 
-Wind direction and velocity have not yet been incorporated. Ideally, we would have information on the wind direction and velocity at the exact space and time of each tuna observation, though I could extract this information from data with larger spatial grain. I have spent less time looking for a source for these data. Suggestions are welcomed.
+Wind direction and velocity have not yet been incorporated. Ideally, we would have information on the wind direction and velocity at the exact space and time of each tuna observation, though I could extract this information from data with larger spatial grain. I have spent less time looking for a source for these data. Suggestions are welcomed. I can be reached at [klankowicz@gmri.org](mailto:klankowicz@gmri.org)
 
+```{r dataneeds-table, }
+dataneeds <- data.frame(
+  "Data source" = c("Prey data (mackerel, herring, menhaden)",
+                    "Prey data (mackerel, herring, menhaden) with non-encounters",
+                    "Chloropyll distribution (must have 100% coverage)",
+                    "Wind direction",
+                    "Wind velocity",
+                    "American recreational catch data",
+                    "Canadian commercial catch data"),
+  
+  "Spatial area" = c("Canadian waters in spatial domain",
+                     "American waters in spatial domain",
+                     "Entire model spatial domain",
+                     "Entire model spatial domain",
+                     "Entire model spatial domain",
+                     "American waters in spatial domain",
+                     "Canadian waters in spatial domain"),
+  
+  "Years" = c("All model years",
+              "All model years",
+              "All model years",
+              "All model years",
+              "All model years",
+              "2022-2023",
+              "2021-2023"
+              )
+)
+
+dataneeds %>%
+  kable(caption = "Table 4: Data needs",
+        booktabs=TRUE,
+        col.names=c('Data source', 'Spatial area', 'Years')) %>%
+  kableExtra::kable_styling(
+    latex_options = c("HOLD_position"))
+
+```
 # VAST
 VAST models were used to estimate BFT spatial density over time and create joint indices of abundance using all available American and Canadian catch data. VAST is a framework for implementing spatial delta-generalized linear mixed models (delta-GLMM) and can be manipulated to provide estimates for multiple categories of interest and spatial strata [@thorson_accounting_2017 @thorson_2019]. It is structured to utilize two linear predictors; the first linear predictor estimates encounter probability, and the second linear predictor estimates catch rates. The first linear predictor can be represented as
 
@@ -1471,10 +1521,10 @@ VAST allows for the effects of both density and catchability covariates to be in
 
 In this model, we will utilize the environmental covariates and basin-scale climate indices as density covariates. Density covariates were chosen after a model selection process to determine their utility to describe patterns in BFT spatiotemporal density. Currently, a simple linear model is used to describe the effects of these covariates on BFT CPUE. In the future, other models will be tested; it is likely that the best model will be more fluid, like a generalized additive model using polynomial splines.
 
-We will not explicitly include catchability covariates, but wil allow for variation in catchability between the American and Canadian fisheries by including them as "vessel effects."
+We will not explicitly include catchability covariates, but will allow for variation in catchability between the American and Canadian fisheries by including them as "vessel effects."
 
 ## Error structure
-As recommended by model developers for adjusted-effort models, a delta-lognormal distribution was chosen for the first linear predictor and an alternative "Poisson-link delta-model"was chosen for the second linear predictor.
+As recommended by model developers for adjusted-effort models, a delta-lognormal distribution was chosen for the first linear predictor and an alternative "Poisson-link delta-model" was chosen for the second linear predictor.
 
 ## Spatial, temporal, and spatiotemporal effects
 Spatial, temporal, and spatiotemporal autocorrelation can be included in both linear predictors. A model selection process was used to justify the use of spatial and spatiotemporal random effects in the first and second linear predictors. The intercept for each linear predictor was defined as a fixed effect for each time step-- this ensures independent estimates of abundance for each time step, which is most appropriate for creating abundance indices [@thorson_2019]. Instead, a temporal component was estimated for the spatiotemporal components in both linear predictors. This is recommended for indices generated by multiple data sources that do not necessarily sample the same locations in every time step [@thorson_2019]. Without this estimation, unrealistic "hot spots" may develop or be carried through the time series when this is inappropriate. The use of a temporal component for spatiotemporal components can also help interpolate density in unsampled time steps [@thorson_2019]. In this model, temporal correlation of these spatiotemporal variations was set as an AR1 process.
@@ -1487,9 +1537,7 @@ Spatial, temporal, and spatiotemporal autocorrelation can be included in both li
 
 Indices of abundance for the early period in the model's temporal domain (1993-2000) are highly variable and look to have some issues due to data quality. More work will need to be done to better account for the lack of observations with 0 tuna in this time period.
 
-Model outputs indicate that large BFT CPUE is high and increasing in Canadian waters, and generally has been since the early 2000s. Large BFT CPUE is much lower in American waters, and has a much slower rate of increase.
-
-Small BFT were rarely observed in Canadian waters, and so the index of abundance is extremely low for the entire temporal domain. As the Canadian data is commercial, it is likely that the lack of small BFT is an artifact of fishery selection. It is unlikely that there are 0 small BFT in Canadian waters, as the model suggests. Small BFT are more abundant in American waters, but the model indicates a rapid decrease in small BFT CPUE in the 90s through early 2000s, and a more stable but lower small BFT CPUE since around 2010.
+Model outputs indicate that large BFT CPUE is high and increasing in Canadian waters, and generally has been since the early 2000s. Large BFT CPUE is much lower in American waters, and has been generally stable since the early 2000s. The large BFT population is driven by fluctuations in the Canadian portion of the stock.
 
 ![Fig. 4: Joint indices of abundance](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/index.png)
 
@@ -1497,35 +1545,25 @@ Small BFT were rarely observed in Canadian waters, and so the index of abundance
 
 ## Maps of spatial density
 
-Small BFT have typically had highest density in American waters. Historically, areas of highest density were in Southern New England. More recently, these pockets of high density seem to have shifted south into the Mid-Atlantic Bight.
+Typically, large BFT density is highest in Canadian waters. The early period of the model indicated areas of high density near Cape Cod, though this is likely caused by the lack of observations with 0 captured tuna prior to 2003. After 2003, large BFT density was highest on eastern Georges Bank and the Scotian Shelf. Density of large BFT south of Cape Cod has declined dramatically throughout the modeled period.
 
-![Fig. 5:Small BFT spatio-temporal density](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png)
-
-\newpage
-
-Large BFT spatial density is almost the opposite of small BFT. Typically, large BFT density is highest in Canadian waters. The early period of the model indicated areas of high density near Cape Cod, though this is likely caused by the lack of observations with 0 captured tuna prior to 2003. After 2003, large BFT density was highest on eastern Georges Bank and the Scotian Shelf. Density of large BFT south of Cape Cod has declined dramatically throughout the modeled period.
-
-![Fig. 6: Large BFT spatio-temporal density](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png)
+![Fig. 5: Large BFT spatio-temporal density](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png)
 
 \newpage
 
 ## Spatial metrics and range shifts
 The model needs to be run once for each spatial strata in order to generate spatial metrics for each strata. As of right now, it takes approximately 9 hours to run on a laptop. Spatial metrics have only been generated for the Canadian stock.
 
-![Fig. 7: Spatial metrics for small BFT in Canadian EEZ](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Small.spring.Canada.png)
+![Fig. 6: Spatial metrics for large BFT in Canadian EEZ](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png)
 
-\newpage
-
-It is interesting that the center of gravity for the small BFT stock in Canadian waters is typically further offshore than the large BFT stock. This is likely caused by the limited number of small BFT found in the Canadian EEZ and does not accurately reflect the true center of gravity for small BFT.
-
-![Fig. 8: Spatial metrics for large BFT in Canadian EEZ](C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png)
+The center of gravity of the large BFT stock has remained fairly consistent over the modeled period. Earlier years saw a slightly more north-and-east distribution, but since the early 2000s large BFT distribution has remained relatively constant. The spatial area used by the population has seen a slight increase since the early 2000s, indicating a decrease in average spatial density.
 
 \newpage
 
 # Model caveats
 Both the American and Canadian datasets report very few sampling events with 0 catch. In the American dataset, the 1993-2002 period has no zeros reported. This likely skews the American indices to incorrectly report high BFT abundance in this period, despite the AR1 temporal correlation process.
 
-The clear age-based spatial structure of BFT (smaller BFT prefer warmer southerly waters, larger BFT prefer colder northerly waters) likely causes issues in the generation of abundance indices. For example, the lack of small BFT in Canadian waters results in very little information for the model to predict and interpolate small BFT abundance in this area.
+There is clear age-based spatial structure of BFT (smaller BFT prefer warmer southerly waters, larger BFT prefer colder northerly waters). Very few small BFT were caught in Canadian waters, and therefore there is not enough information for the model to predict and interpolate BFT abundance in this area. This is not a barrier that can be overcome with more data. Abundance indices between US and Canadian waters can only be reliably created for the large size class.
 
 # GitHub
 To follow model progress live, please [visit the Github repository](https://github.com/Northeast-Climate-Integrated-Modeling/Atlantic-Bluefin-Tuna-Climate-Informed-Stock-Assessment) for the project.

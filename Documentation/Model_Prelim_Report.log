@@ -1,4 +1,4 @@
-This is LuaHBTeX, Version 1.17.0 (MiKTeX 23.5) (format=lualatex 2023.6.30)  30 JUN 2023 16:03
+This is LuaHBTeX, Version 1.17.0 (MiKTeX 23.5) (format=lualatex 2023.7.7)  7 JUL 2023 15:23
  restricted system commands enabled.
 **Model_Prelim_Report.tex
 (./Model_Prelim_Report.tex
@@ -140,8 +140,42 @@ Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
 LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
 LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 (Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
-)) (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/generic/iftex/iftex.s
-ty
+)) (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/lm/lmodern.sty
+Package: lmodern 2015/05/01 v1.6.1 Latin Modern Fonts
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  OT1/cmr/m/n --> OT1/lmr/m/n on input line 22.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `normal'
+(Font)                  OML/cmm/m/it --> OML/lmm/m/it on input line 23.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
+(Font)                  OMS/cmsy/m/n --> OMS/lmsy/m/n on input line 24.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
+(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 25.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 26.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `bold'
+(Font)                  OML/cmm/b/it --> OML/lmm/b/it on input line 27.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
+(Font)                  OMS/cmsy/b/n --> OMS/lmsy/b/n on input line 28.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
+(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 29.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 31.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
+(Font)                  OT1/cmss/m/n --> OT1/lmss/m/n on input line 32.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
+(Font)                  OT1/cmr/m/it --> OT1/lmr/m/it on input line 33.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
+(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 34.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 35.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
+(Font)                  OT1/cmss/bx/n --> OT1/lmss/bx/n on input line 36.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
+(Font)                  OT1/cmr/bx/it --> OT1/lmr/bx/it on input line 37.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
+(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 38.
+) (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/generic/iftex/iftex.st
+y
 Package: iftex 2022/02/03 v1.0f TeX engine tests
 )
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/unicode-math/unico
@@ -222,42 +256,7 @@ h LuaLaTeX)
 \g__um_primekern_muskip=\muskip17
 
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/unicode-math/unico
-de-math-table.tex))) (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/lat
-ex/lm/lmodern.sty
-Package: lmodern 2015/05/01 v1.6.1 Latin Modern Fonts
-LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
-(Font)                  OT1/cmr/m/n --> OT1/lmr/m/n on input line 22.
-LaTeX Font Info:    Overwriting symbol font `letters' in version `normal'
-(Font)                  OML/cmm/m/it --> OML/lmm/m/it on input line 23.
-LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
-(Font)                  OMS/cmsy/m/n --> OMS/lmsy/m/n on input line 24.
-LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
-(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 25.
-LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
-(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 26.
-LaTeX Font Info:    Overwriting symbol font `letters' in version `bold'
-(Font)                  OML/cmm/b/it --> OML/lmm/b/it on input line 27.
-LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
-(Font)                  OMS/cmsy/b/n --> OMS/lmsy/b/n on input line 28.
-LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
-(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 29.
-LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
-(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 31.
-LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
-(Font)                  OT1/cmss/m/n --> OT1/lmss/m/n on input line 32.
-LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
-(Font)                  OT1/cmr/m/it --> OT1/lmr/m/it on input line 33.
-LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
-(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 34.
-LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
-(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 35.
-LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
-(Font)                  OT1/cmss/bx/n --> OT1/lmss/bx/n on input line 36.
-LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
-(Font)                  OT1/cmr/bx/it --> OT1/lmr/bx/it on input line 37.
-LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
-(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 38.
-)
+de-math-table.tex)))
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/upquote/upquote.st
 y
 Package: upquote 2012/04/19 v1.3 upright-quote and grave-accent glyphs in verba
@@ -647,7 +646,7 @@ tlig;+smcp;"
 +tlig;+smcp;"
 
 LaTeX Font Info:    Font shape `TU/Calibri(0)/m/n' will be
-(Font)              scaled to size 10.0pt on input line 101.
+(Font)              scaled to size 10.0pt on input line 98.
 
 Package fontspec Info: Calibri scale = 0.9999967139960766.
 
@@ -708,11 +707,11 @@ tn;language=dflt;"
 tn;language=dflt;+smcp;"
 
 LaTeX Font Info:    Overwriting math alphabet `\mathrm' in version `normal'
-(Font)                  OT1/lmr/m/n --> TU/Calibri(1)/m/n on input line 101.
+(Font)                  OT1/lmr/m/n --> TU/Calibri(1)/m/n on input line 98.
 LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
-(Font)                  OT1/lmr/m/it --> TU/Calibri(1)/m/it on input line 101.
+(Font)                  OT1/lmr/m/it --> TU/Calibri(1)/m/it on input line 98.
 LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
-(Font)                  OT1/lmr/bx/n --> TU/Calibri(1)/b/n on input line 101.
+(Font)                  OT1/lmr/bx/n --> TU/Calibri(1)/b/n on input line 98.
 
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/titlesec/titlesec.
 sty
@@ -1273,38 +1272,38 @@ File: bkm-pdftex.def 2020-11-06 v1.29 bookmark driver for pdfTeX (HO)
 )) (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/xurl/xurl.sty
 Package: xurl 2022/01/09 v 0.10 modify URL breaks
 )
-Package hyperref Info: Option `colorlinks' set `true' on input line 226.
+Package hyperref Info: Option `colorlinks' set `true' on input line 223.
 (./Model_Prelim_Report.aux)
 \openout1 = Model_Prelim_Report.aux
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 232.
-LaTeX Font Info:    ... okay on input line 232.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 229.
+LaTeX Font Info:    ... okay on input line 229.
 LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
-(Font)                  OT1/lmss/m/n --> TU/lmss/m/n on input line 232.
+(Font)                  OT1/lmss/m/n --> TU/lmss/m/n on input line 229.
 LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
-(Font)                  OT1/lmss/bx/n --> TU/lmss/b/n on input line 232.
+(Font)                  OT1/lmss/bx/n --> TU/lmss/b/n on input line 229.
 LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
-(Font)                  OT1/lmtt/m/n --> TU/lmtt/m/n on input line 232.
+(Font)                  OT1/lmtt/m/n --> TU/lmtt/m/n on input line 229.
 LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
-(Font)                  OT1/lmtt/m/n --> TU/lmtt/b/n on input line 232.
+(Font)                  OT1/lmtt/m/n --> TU/lmtt/b/n on input line 229.
 
 Package fontspec Info: Font family 'latinmodern-math.otf(0)' created for font
 (fontspec)             'latinmodern-math.otf' with options
@@ -1357,16 +1356,16 @@ e=dflt;"
 (fontspec)             \__um_luatex_copy_fontdimens: 
 
 LaTeX Font Info:    Encoding `OT1' has changed to `TU' for symbol font
-(Font)              `operators' in the math version `normal' on input line 232.
+(Font)              `operators' in the math version `normal' on input line 229.
 
 LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
 (Font)                  OT1/lmr/m/n --> TU/latinmodern-math.otf(1)/m/n on input
- line 232.
+ line 229.
 LaTeX Font Info:    Encoding `OT1' has changed to `TU' for symbol font
-(Font)              `operators' in the math version `bold' on input line 232.
+(Font)              `operators' in the math version `bold' on input line 229.
 LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
 (Font)                  OT1/lmr/bx/n --> TU/latinmodern-math.otf(1)/b/n on inpu
-t line 232.
+t line 229.
 
 Package fontspec Info: latinmodern-math scale = 1.0001.
 
@@ -1441,15 +1440,15 @@ th;language=dflt;"
 (fontspec)             21\font =0pt\relax 
 
 LaTeX Font Info:    Encoding `OMS' has changed to `TU' for symbol font
-(Font)              `symbols' in the math version `normal' on input line 232.
+(Font)              `symbols' in the math version `normal' on input line 229.
 LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
 (Font)                  OMS/lmsy/m/n --> TU/latinmodern-math.otf(2)/m/n on inpu
-t line 232.
+t line 229.
 LaTeX Font Info:    Encoding `OMS' has changed to `TU' for symbol font
-(Font)              `symbols' in the math version `bold' on input line 232.
+(Font)              `symbols' in the math version `bold' on input line 229.
 LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
 (Font)                  OMS/lmsy/b/n --> TU/latinmodern-math.otf(2)/b/n on inpu
-t line 232.
+t line 229.
 
 Package fontspec Info: latinmodern-math scale = 0.9999.
 
@@ -1507,58 +1506,58 @@ th;language=dflt;"
 
 LaTeX Font Info:    Encoding `OMX' has changed to `TU' for symbol font
 (Font)              `largesymbols' in the math version `normal' on input line 2
-32.
+29.
 LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
 (Font)                  OMX/lmex/m/n --> TU/latinmodern-math.otf(3)/m/n on inpu
-t line 232.
+t line 229.
 LaTeX Font Info:    Encoding `OMX' has changed to `TU' for symbol font
-(Font)              `largesymbols' in the math version `bold' on input line 232
+(Font)              `largesymbols' in the math version `bold' on input line 229
 .
 LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
 (Font)                  OMX/lmex/m/n --> TU/latinmodern-math.otf(3)/b/n on inpu
-t line 232.
+t line 229.
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 2
-32.
+29.
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 10.00107pt on input line 232.
+(Font)              scaled to size 10.00107pt on input line 229.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 7.00075pt on input line 232.
+(Font)              scaled to size 7.00075pt on input line 229.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 5.00053pt on input line 232.
+(Font)              scaled to size 5.00053pt on input line 229.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 9.99893pt on input line 232.
+(Font)              scaled to size 9.99893pt on input line 229.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 6.99925pt on input line 232.
+(Font)              scaled to size 6.99925pt on input line 229.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 4.99947pt on input line 232.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 232
+(Font)              scaled to size 4.99947pt on input line 229.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 229
 .
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 232
+LaTeX Font Info:    Trying to load font information for U+msb on input line 229
 .
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Info: Redefining \microtypecontext on input line 232.
-Package microtype Info: Applying patch `item' on input line 232.
-Package microtype Info: Applying patch `toc' on input line 232.
-Package microtype Info: Applying patch `eqnum' on input line 232.
+LaTeX Info: Redefining \microtypecontext on input line 229.
+Package microtype Info: Applying patch `item' on input line 229.
+Package microtype Info: Applying patch `toc' on input line 229.
+Package microtype Info: Applying patch `eqnum' on input line 229.
 
-Package microtype Warning: Unable to apply patch `footnote' on input line 232.
+Package microtype Warning: Unable to apply patch `footnote' on input line 229.
 
-Package microtype Info: Applying patch `verbatim' on input line 232.
+Package microtype Info: Applying patch `verbatim' on input line 229.
 Package microtype Info: Generating PDF output.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using protrusion set `basicmath'.
 Package microtype Info: Automatic font expansion enabled (level 2),
 (microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
 Package microtype Info: Using default expansion set `alltext-nott'.
-LaTeX Info: Redefining \showhyphens on input line 232.
+LaTeX Info: Redefining \showhyphens on input line 229.
 Package microtype Info: No adjustment of tracking.
 Package microtype Info: No adjustment of spacing.
 Package microtype Info: No adjustment of kerning.
@@ -1626,9 +1625,9 @@ File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-LaTeX Info: Redefining \rmfamily on input line 232.
-LaTeX Info: Redefining \sffamily on input line 232.
-LaTeX Info: Redefining \ttfamily on input line 232.
+LaTeX Info: Redefining \rmfamily on input line 229.
+LaTeX Info: Redefining \sffamily on input line 229.
+LaTeX Info: Redefining \ttfamily on input line 229.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 The property list \__xpg_alias contains the pairs (without outer braces):
@@ -1665,8 +1664,8 @@ The property list \__xpg_alias contains the pairs (without outer braces):
 >  {newzealand/target}  =>  {english}
 >  {newzealand/variant}  =>  {newzealand}
 >  {newzealand/options}  =>  {variant=newzealand}.
-Package hyperref Info: Link coloring ON on input line 232.
-Package soulpos Info: Loading soulutf8 on input line 232.
+Package hyperref Info: Link coloring ON on input line 229.
+Package soulpos Info: Loading soulutf8 on input line 229.
 
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/generic/soul/soulutf8.st
 y
@@ -1707,27 +1706,27 @@ Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: threeparttable package is loaded.
 Package caption Info: wrapfig package is loaded.
 Package caption Info: End \AtBeginDocument code.
-LaTeX Info: Redefining \rmfamily on input line 232.
-LaTeX Info: Redefining \sffamily on input line 232.
-LaTeX Info: Redefining \ttfamily on input line 232.
+LaTeX Info: Redefining \rmfamily on input line 229.
+LaTeX Info: Redefining \sffamily on input line 229.
+LaTeX Info: Redefining \ttfamily on input line 229.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 LaTeX Font Info:    Font shape `TU/Calibri(0)/m/n' will be
-(Font)              scaled to size 17.28pt on input line 234.
+(Font)              scaled to size 17.28pt on input line 231.
 LaTeX Font Info:    Font shape `TU/Calibri(0)/m/n' will be
-(Font)              scaled to size 12.0pt on input line 234.
+(Font)              scaled to size 12.0pt on input line 231.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 12.00128pt on input line 234.
+(Font)              scaled to size 12.00128pt on input line 231.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 8.00085pt on input line 234.
+(Font)              scaled to size 8.00085pt on input line 231.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 6.00064pt on input line 234.
+(Font)              scaled to size 6.00064pt on input line 231.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 11.99872pt on input line 234.
+(Font)              scaled to size 11.99872pt on input line 231.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 7.99915pt on input line 234.
+(Font)              scaled to size 7.99915pt on input line 231.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 5.99936pt on input line 234.
+(Font)              scaled to size 5.99936pt on input line 231.
 
 (C:/Users/klankowicz/AppData/Local/Programs/MiKTeX/tex/latex/microtype/mt-msa.c
 fg
@@ -1740,9 +1739,9 @@ File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 LaTeX Font Info:    Font shape `TU/Calibri(0)/m/n' will be
-(Font)              scaled to size 14.4pt on input line 238.
+(Font)              scaled to size 14.4pt on input line 235.
 LaTeX Font Info:    Font shape `TU/Calibri(0)/b/n' will be
-(Font)              scaled to size 14.4pt on input line 238.
+(Font)              scaled to size 14.4pt on input line 235.
 luaotfload | aux : font no 82 (nil) defines no feature for script latn with lang
 uage eng (./Model_Prelim_Report.toc
 LaTeX Info: Redefining \rmfamily on input line 1.
@@ -1831,7 +1830,7 @@ uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 LaTeX Font Info:    Font shape `TU/Calibri(0)/b/n' will be
-(Font)              scaled to size 12.0pt on input line 285.
+(Font)              scaled to size 12.0pt on input line 282.
 luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
 uage eng
 Package microtype Info: Loading generic protrusion settings for font family
@@ -1840,22 +1839,22 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             See the microtype manual for details.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
-<Model_Prelim_Report_files/figure-latex/spatial-domain-1.pdf, id=54, 469.755pt 
+luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
+uage eng [2]
+luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
+uage eng
+<Model_Prelim_Report_files/figure-latex/spatial-domain-1.pdf, id=60, 469.755pt 
 x 325.215pt>
 File: Model_Prelim_Report_files/figure-latex/spatial-domain-1.pdf Graphic file 
 (type pdf)
 <use Model_Prelim_Report_files/figure-latex/spatial-domain-1.pdf>
 Package luatex.def Info: Model_Prelim_Report_files/figure-latex/spatial-domain-
-1.pdf  used on input line 293.
+1.pdf  used on input line 290.
 (luatex.def)             Requested size: 469.75386pt x 325.2142pt.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 LaTeX Font Info:    Font shape `TU/Calibri(0)/m/n' will be
-(Font)              scaled to size 9.0pt on input line 294.
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng [2]
+(Font)              scaled to size 9.0pt on input line 291.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
@@ -1898,7 +1897,7 @@ File: Model_Prelim_Report_files/figure-latex/americanplot-1.pdf Graphic file (t
 ype pdf)
 <use Model_Prelim_Report_files/figure-latex/americanplot-1.pdf>
 Package luatex.def Info: Model_Prelim_Report_files/figure-latex/americanplot-1.
-pdf  used on input line 365.
+pdf  used on input line 364.
 (luatex.def)             Requested size: 469.75386pt x 325.2142pt.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
@@ -1930,7 +1929,7 @@ File: Model_Prelim_Report_files/figure-latex/canadianplot-1.pdf Graphic file (t
 ype pdf)
 <use Model_Prelim_Report_files/figure-latex/canadianplot-1.pdf>
 Package luatex.def Info: Model_Prelim_Report_files/figure-latex/canadianplot-1.
-pdf  used on input line 404.
+pdf  used on input line 403.
 (luatex.def)             Requested size: 469.75386pt x 325.2142pt.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
@@ -1940,20 +1939,24 @@ luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
-luaotfload | aux : font no 82 (nil) defines no feature for script latn with lang
+luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
+Overfull \hbox (21.27916pt too wide) in paragraph at lines 420--434
+ [][] 
+ []
+
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng [8
 
 <./Model_Prelim_Report_files/figure-latex/canadianplot-1.pdf>]
-LaTeX Font Info:    Font shape `TU/Calibri(0)/m/it' will be
-(Font)              scaled to size 10.0pt on input line 424.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
-luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
+luaotfload | aux : font no 82 (nil) defines no feature for script latn with lang
 uage eng
+LaTeX Font Info:    Font shape `TU/Calibri(0)/m/it' will be
+(Font)              scaled to size 10.0pt on input line 443.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
@@ -1966,6 +1969,10 @@ luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng [9]
+luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
+uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 86 (nil) defines no feature for script latn with lang
@@ -1985,15 +1992,15 @@ uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 <C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-St
-ock-Assessment/Plot_Output/index.png, id=138, 578.16pt x 289.08pt>
+ock-Assessment/Plot_Output/index.png, id=141, 299.6796pt x 289.08pt>
 File: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Inform
 ed-Stock-Assessment/Plot_Output/index.png Graphic file (type png)
 <use C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informe
 d-Stock-Assessment/Plot_Output/index.png>
 Package luatex.def Info: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-
 Tuna-Climate-Informed-Stock-Assessment/Plot_Output/index.png  used on input lin
-e 470.
-(luatex.def)             Requested size: 469.75385pt x 234.8769pt.
+e 487.
+(luatex.def)             Requested size: 299.69257pt x 289.09251pt.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
@@ -2008,28 +2015,7 @@ uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 <C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-St
-ock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png, id=147, 1669.43
-7pt x 1501.0479pt>
-File: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Inform
-ed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png Graphic fil
-e (type png)
-<use C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informe
-d-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png>
-Package luatex.def Info: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-
-Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predic
-ted.png  used on input line 483.
-(luatex.def)             Requested size: 469.75726pt x 422.37483pt.
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng [12<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-
-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Small-predicted.png>]
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-St
-ock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png, id=154, 1669.43
+ock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png, id=151, 1669.43
 7pt x 1501.0479pt>
 File: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Inform
 ed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png Graphic fil
@@ -2038,14 +2024,14 @@ e (type png)
 d-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png>
 Package luatex.def Info: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-
 Tuna-Climate-Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predic
-ted.png  used on input line 493.
+ted.png  used on input line 500.
 (luatex.def)             Requested size: 469.75726pt x 422.37483pt.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng [13<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-
+uage eng [12<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-
 Informed-Stock-Assessment/VAST_runs/tuna8/ln_density--Large-predicted.png>]
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
@@ -2054,29 +2040,8 @@ uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 <C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-St
-ock-Assessment/Plot_Output/location.info.Small.spring.Canada.png, id=160, 722.7
-pt x 578.16pt>
-File: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Inform
-ed-Stock-Assessment/Plot_Output/location.info.Small.spring.Canada.png Graphic f
-ile (type png)
-<use C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informe
-d-Stock-Assessment/Plot_Output/location.info.Small.spring.Canada.png>
-Package luatex.def Info: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-
-Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Small.spring.C
-anada.png  used on input line 506.
-(luatex.def)             Requested size: 469.76045pt x 375.80836pt.
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng [14<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-
-Informed-Stock-Assessment/Plot_Output/location.info.Small.spring.Canada.png>]
-luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng
-<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Informed-St
-ock-Assessment/Plot_Output/location.info.Large.spring.Canada.png, id=168, 722.7
-pt x 578.16pt>
+ock-Assessment/Plot_Output/location.info.Large.spring.Canada.png, id=158, 1806.
+75pt x 1445.4pt>
 File: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-Inform
 ed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png Graphic f
 ile (type png)
@@ -2084,14 +2049,14 @@ ile (type png)
 d-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png>
 Package luatex.def Info: C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-
 Tuna-Climate-Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.C
-anada.png  used on input line 516.
-(luatex.def)             Requested size: 469.76045pt x 375.80836pt.
+anada.png  used on input line 513.
+(luatex.def)             Requested size: 469.74393pt x 375.79514pt.
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng [15<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-
+uage eng [13<C:/Users/klankowicz/Documents/GitHub/Atlantic-Bluefin-Tuna-Climate-
 Informed-Stock-Assessment/Plot_Output/location.info.Large.spring.Canada.png>]
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
@@ -2194,7 +2159,7 @@ The property list \__xpg_alias contains the pairs (without outer braces):
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
 uage eng
 luaotfload | aux : font no 29 (nil) defines no feature for script latn with lang
-uage eng [16] (./Model_Prelim_Report.aux * soulpos - computing points - it may 
+uage eng [14] (./Model_Prelim_Report.aux * soulpos - computing points - it may 
 take a few seconds *
 \openout3 = Model_Prelim_Report.upb
  (./Model_Prelim_Report.upa))
@@ -2205,24 +2170,24 @@ L3 programming layer <2023-06-16>
 )
 
 Here is how much of LuaTeX's memory you used:
- 31743 strings out of 478031
+ 31722 strings out of 478031
  125086,1977958 words of node,token memory allocated
  696 words of node memory still in use:
    8 hlist, 2 vlist, 2 rule, 1 local_par, 4 glue, 4 kern, 1 penalty, 4 glyph, 14
  attribute, 70 glue_spec, 14 attribute_list, 1 write, 1 user_defined, 4 pdf_acti
 on nodes
-   avail lists: 1:1,2:586,3:392,4:112,5:1434,6:94,7:8994,8:42,9:558,10:9,11:784
- 51520 multiletter control sequences out of 65536+600000
- 90 fonts using 48637639 bytes
+   avail lists: 1:2,2:586,3:392,4:112,5:1286,6:94,7:8199,8:42,9:558,10:9,11:679
+ 51508 multiletter control sequences out of 65536+600000
+ 90 fonts using 48637791 bytes
  90i,9n,122p,1250b,567s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/WINDOWS/Fonts/calibrii.ttf><C:/Users/klankowicz/AppData/Local/Programs/MiKTe
 X/fonts/opentype/public/lm-math/latinmodern-math.otf><C:/Users/klankowicz/AppDat
 a/Local/Programs/MiKTeX/fonts/opentype/public/lm-math/latinmodern-math.otf><C:/W
 INDOWS/Fonts/calibrib.ttf><//?/c:/users/klankowicz/appdata/local/programs/miktex
 /fonts/opentype/public/lm/lmsans10-bold.otf><C:/WINDOWS/Fonts/calibri.ttf>
-Output written on Model_Prelim_Report.pdf (16 pages, 5048466 bytes).
+Output written on Model_Prelim_Report.pdf (14 pages, 4038194 bytes).
 
-PDF statistics: 300 PDF objects out of 1000 (max. 8388607)
- 74 named destinations out of 1000 (max. 131072)
+PDF statistics: 291 PDF objects out of 1000 (max. 8388607)
+ 71 named destinations out of 1000 (max. 131072)
  161 words of extra memory for PDF output out of 10000 (max. 100000000)
 

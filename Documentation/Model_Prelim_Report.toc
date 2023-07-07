@@ -9,16 +9,16 @@
 \contentsline {subsection}{\numberline {2.4}US BFT Recreational Catch}{4}{subsection.2.4}%
 \contentsline {subsection}{\numberline {2.5}Canadian BFT Commercial Landings}{6}{subsection.2.5}%
 \contentsline {subsection}{\numberline {2.6}Data needs}{8}{subsection.2.6}%
-\contentsline {section}{\numberline {3}VAST}{8}{section.3}%
+\contentsline {section}{\numberline {3}VAST}{9}{section.3}%
 \contentsline {subsection}{\numberline {3.1}Response variable and effort adjustment}{9}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Density and Catchability Covariates}{9}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.2}Density and Catchability Covariates}{10}{subsection.3.2}%
 \contentsline {subsection}{\numberline {3.3}Error structure}{10}{subsection.3.3}%
 \contentsline {subsection}{\numberline {3.4}Spatial, temporal, and spatiotemporal effects}{10}{subsection.3.4}%
 \contentsline {section}{\numberline {4}Preliminary results}{11}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Joint indices of abundance}{11}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Maps of spatial density}{12}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}Spatial metrics and range shifts}{14}{subsection.4.3}%
-\contentsline {section}{\numberline {5}Model caveats}{16}{section.5}%
-\contentsline {section}{\numberline {6}GitHub}{16}{section.6}%
-\contentsline {section}{References}{16}{section*.13}%
+\contentsline {subsection}{\numberline {4.3}Spatial metrics and range shifts}{13}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Model caveats}{14}{section.5}%
+\contentsline {section}{\numberline {6}GitHub}{14}{section.6}%
+\contentsline {section}{References}{14}{section*.12}%
 \xpginauxfilefalse 
