@@ -1,5 +1,6 @@
 rm(list=ls())
 library(tidyverse)
+library(here)
 # Set GGplot auto theme
 theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 panel.grid.minor = element_blank(),
@@ -13,7 +14,7 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.title=element_text(size=14, hjust = 0, vjust = 1.2),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
-ind <- read.csv(here('VAST_runs/tuna8/Index.csv'))
+ind <- read.csv(here('VAST_runs/tuna9/Index.csv'))
 
 head(ind)
 
@@ -26,9 +27,9 @@ for(i in 1:nrow(ind)){
   }
 }
 
-ind$Stratum[ind$Stratum == 'Stratum_1'] <- 'Canada'
-ind$Stratum[ind$Stratum == 'Stratum_2'] <- 'US'
-ind$Stratum[ind$Stratum == 'Stratum_3'] <- 'Both'
+#ind$Stratum[ind$Stratum == 'Stratum_1'] <- 'Canada'
+#ind$Stratum[ind$Stratum == 'Stratum_2'] <- 'US'
+#ind$Stratum[ind$Stratum == 'Stratum_3'] <- 'Both'
 
 head(ind)
 
@@ -36,15 +37,15 @@ library(ggplot2)
 
 ind.p <- ggplot() +
   geom_line(data=ind, 
-            aes(x=Time, y=Estimate, col=Stratum)) +
+            aes(x=Time, y=Estimate, col=Category)) +
   geom_ribbon(data=ind, alpha=0.2,
-              aes(x=Time, ymin=lower, ymax=upper, fill=Stratum))+
-  facet_wrap(vars(Category),
-             scales = "free_y") +
+              aes(x=Time, ymin=lower, ymax=upper, fill=Category))+
+  #facet_wrap(vars(Category),
+  #           scales = "free_y") +
   labs(x='Year', 
        y='Estimate') +
   theme(strip.text.x = element_text(size=12))
 
 ggsave(ind.p,
-       filename=paste0(here(), "/Plot_Output/index.png"),
+       filename=paste0(here(), "/Plot_Output/index_usonly.png"),
        width = 8, height = 4, units='in')
