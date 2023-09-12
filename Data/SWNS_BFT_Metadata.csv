@@ -1,0 +1,62 @@
+Variable,Description,Information needed
+NAFO_UNIT,Northwest Atlantic Fisheries Organization spatial units,
+MONTH,Numeric month,
+GEAR_CODE,"Numeric code identifying gear type (54= tended line, 60= Rod & Reel trolling, 85= Harpoon)",
+MON_DOC_ID,,Description of variable and possible values
+TRIP_ID,Unique trip identifier,
+LOG_EFRT_STD_INFO_ID,,Description of variable and possible values
+VR_NUMBER,Vessel Registration number,
+HOME_MGT_AREA,Management area linked to vessel registration,
+DATE_SAILED,Year Month Day of departure,
+TIME_SAILED,Time of departure (24 hour clock),
+LANDING_DATE_TIME,Year Month Day of landing,
+COMMUNITY_CODE,,Description of variable and possible values
+TRIP_NUMBER,Trip number for vessel within the year,
+TOTAL_HOURS_FISHED,Hours of trip used to fish (preferred measure of effort),
+NUM_OF_STRIKES,Number of strikes on lines,
+HOOK_SIZE,Numeric code identifying size of hook,
+NUM_OF_LINES,Number of lines,
+GAUGE_OF_MONO,Monofilament gauge size of lines,
+BAIT,Numeric code identifying type of bait,Description of possible values
+BFT_TAG_NUMBER,Unique number identifying individual BFT landed,
+DATE_FISHED,Day month year of fishing effort,
+CAPTURE_TIME,Hour and minute of capture time,
+LATITUDE,Decimal degrees atitude at location of capture,
+LONGITUDE,Decimal degrees longitude at location of capture,
+FLANK_LENGTH,Curved distance from tip of upper jaw to fork of tail following lateral line of the body,
+FLANK_LENGTH_UOM,Unit of measurement used for flank length,
+DRESSED_LENGTH,Curved distance from upper anterior of pectoral fin to fork of tail following lateral line of the body,
+DRESSED_LENGTH_UOM,Unit of measurement used for dressed length,
+TOTAL_NUM_BFT_CAUGHT_TRIP,Total number of bluefin tuna caught on trip,
+LANDED_FORM_CODE,,Description of variable and possible values
+BFT_LANDED_WEIGHT_LBS,"Weight of bluefin tuna caught during trip (when multiple BFT are caught on a trip, each fish will have its own row in the datasheet)",
+BFT_DRESSED_WEIGHT_LBS_TRIP,Total dressed weight of all bluefin tuna caught during trip (lbs),
+BET_DRESSED_WEIGHT_LBS_TRIP,Total dressed weight of all bigeye tuna caught during trip (lbs),
+YFT_DRESSED_WEIGHT_LBS_TRIP,Total dressed weight of all bigeye tuna caught during trip (lbs),
+ALB_DRESSED_WEIGHT_LBS_TRIP,Total dressed weight of all albacore caught during trip (lbs),
+WATER_TEMP_UOM,Unit of measurement for surface water temperature (field-measured) at point of capture,
+WATER_TEMP,Surface water temperature (field-measured),
+YEAR,Year of trip,
+DATE_SAILED2,"Year Month Day (Hour Minute, when available) of departure",
+DATE_LANDED2,"Year Month Day (Hour Minute, when available) of landing",
+SEADAYS,"Decimal days at sea (ex: 2.5 days is 2 days, 12 hours)",
+GEAR,"Gear used (TL= tended line, RRt= rod & reel trolling, HARP= harpoon)",
+COUNT,Number of bluefin landed,Why do COUNT and COUNTb sometimes differ?
+COUNTb,Number of bluefin landed,Why do COUNT and COUNTb sometimes differ?
+DATE_FISHED2,"Year Month Day (Hour Minute, when available) of fishing effort",
+MOON,Decimal position in mooon phase,
+WATER_TEMP2,"Surface water temperature (field-measured, always C) at point of capture",
+NAFO_UNIT2,,Why do NAFO_UNIT and NAFO_UNIT2 sometimes differ?
+PROVINCE_LANDED,Numeric code identifying province where fish were landed,Description of possible values
+DISTRICT_LANDED,Numeric code identifying district where fish were landed,Description of possible values
+PORT_LANDED,Numeric code identifying port where fish were landed,Description of possible values
+FLEET,Fleet code,
+DOY,Julian day of year,
+OTC,Sum of dressed weight for all other tuna caught in trip (lbs),
+UF,Intermediate variable used to link vessels to fleets by registration number,
+FLEET2,Intermediate variable used to link vessels to fleets by registration number,
+isLCx_1,,Description of variable and possible values
+isLCy_1,,Description of variable and possible values
+SSTemp,Weekly mean sea surface temperature derived from NOAA OISST data (deg C),
+Depth,Water depth (m) at point of capture derived from NOAA bathymetry,
+Grad,Depth gradient derived from NOAA bathymetry,

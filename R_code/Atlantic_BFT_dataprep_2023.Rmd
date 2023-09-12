@@ -1,0 +1,411 @@
+---
+title: "Atlantic Fishing Data 2023"
+author: "AR Hanke"
+date: "2023-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=12, fig.height=8) 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE,error=F) 
+
+require(ggplot2)
+require(plyr)
+require(dplyr)
+require(data.table)
+require(lubridate)
+require(kableExtra)
+require(stringr)
+require(mgcv)
+
+theme_set(theme_bw())
+
+EOM = yday(c("2007-04-30",
+                     "2007-05-31",
+                     "2008-06-30",
+                     "2008-07-31",
+                     "2008-08-31",
+                     "2008-09-30",
+                     "2008-10-31",
+                     "2008-11-30"))
+```
+
+
+```{r Functions, echo=FALSE, include=FALSE}
+#-------------------------- Richards growth curve parameters estimated by Lisa
+
+WBFTgrowth = function(FL=NULL, AGE=NULL, CFLtoSFL=T){
+
+  A1 = 0
+  A2 = 34
+  L1 = 33
+  L2 = 270.6
+  K = .22
+  p = -.12
+  kp = 1.5
+  rho = .97
+  sigmaL1 = 7.7
+  sigmaL2 = 21
+  mulog = 0.74
+  sigmalog = -1.3
+  
+
+  if(is.null(FL))
+{FL = ( L1^p + (L2^p - L1^p) * ( (1-exp(-K*(AGE-A1)))/
+                                      1-exp(-K*(A2-A1)))) ^ (1/p)
+return(FL)}
+  
+  if(is.null(AGE))
+  {FL =  1.85746 + 0.9606*(FL)
+    AGE = A1 + log(1 - ((FL^p - L1^p)/ (L2^p - L1^p) * (1-exp(-K*(A2-A1))))) / -K
+    AGE[which(is.na(AGE))] = sapply(which(is.na(AGE)),function(x) sample(30:37,1), simplify=T)
+return(AGE)}
+}
+
+RWT_CFL = function(x){
+  (x/4.944442E-5)^(1/2.80941)
+}
+
+DWT_CFL = function(x){
+  (x/8.31E-6)^(1/3.078037)
+}
+
+CFL_SFL = function(x){
+  (1.85746 + 0.9606*X)
+}
+```
+
+```{r Load, include=FALSE}
+## Load data components
+
+
+# Load SWNS fishing data
+# The SWNS data from 2002 to 2022. The object is called marfis.bftlog.
+load(file="C:/Users/hankea/Documents/My_Projects/Bluefin Single Index/BFT index 2023/SWNS_trip_unrestricted_2002_2023.Rdata", verbose=T)
+
+# This part of the code was used in the 2022 index preparation.
+# The result of housekeeping on the historical data was saved and is read
+# in the line that follows.
+# The detail historical SWNS data from 1995 to 2003. the object is called LogSlip9503_detail.
+# load(file="C:/Users/hankea/Documents/My_Projects/Bluefin Single Index/BFT index 2020/comland95_03_detail.RDATA", verbose=T)
+# 
+# load(file="C:/Users/hankea/Documents/My_Projects/Bluefin Single Index/comland95_03.RDATA", verbose=T)
+
+# load the object Hdata
+load(file="C:/Users/hankea/Documents/My_Projects/Bluefin Single Index/BFT index 2022/Historical SWNS fishing data.Rdata", verbose = T)
+```
+
+# Househeeping on new data
+```{r Recent, include=FALSE}
+# Housekeeping
+marfis.bftlog[FLEET=="QC", FLEET := "PQ"]
+
+# Other tuna catch
+marfis.bftlog[, OTC := sum(BET_DRESSED_WEIGHT_LBS_TRIP,
+                           YFT_DRESSED_WEIGHT_LBS_TRIP,
+                           ALB_DRESSED_WEIGHT_LBS_TRIP, na.rm=T), TRIP_ID]
+
+# Try to assign a FLEET to the unknowns
+marfis.bftlog[, UF := length(unique(FLEET)), VR_NUMBER]
+marfis.bftlog[, FLEET2 := paste(unique(FLEET), collapse="_"),VR_NUMBER]
+marfis.bftlog[FLEET=="UNK"&UF==2, FLEET2 := sapply(str_split(marfis.bftlog[FLEET=="UNK"&UF==2]$FLEET2,"_"), function(x) x[-match("UNK",x)])]
+marfis.bftlog[FLEET=="UNK"&UF==2, FLEET := FLEET2]
+
+# Fix coordinate data
+FileName = "marfis.bftlog_cleaned_xy.csv"
+LATITUDE = c("LATITUDE")
+LONGITUDE = c("LONGITUDE")
+BB=c(30.1,55.1,45.00,77.8)
+# This function returns the original data object with coordinates as decimal degrees
+# saves a copy to the chosen FileName.
+source("C:/Users/hankea/Documents/My_Projects/Bluefin Single Index/CoordinateCorrectionFunction.R")
+marfis.bftlog = LPL_QAQC(DataObj=marfis.bftlog, LAT=LATITUDE, LON=LONGITUDE, BB=c(30.1,55.1,45.00,77.8), FileName = FileName)
+
+# There is no need to apply the coordinate correction to the Hdata. It's fine!
+Hdata[, LON := ifelse(LON == 6, 60, LON)]
+```
+
+#ASSIGN SEA SURFACE TEMPERATURE from satellite data
+```{r}
+#Note that ncdf only works with older versions of R and is not longer available. This code might need to be updated to be
+#compatable with ncdf4 library which is a current R package that can handle ncdf files.
+
+library(ncdf4)
+
+#NB: You must go to the following website and download the SST files that cover the
+# period of interest : 
+# https://www.esrl.noaa.gov/psd/repository/entry/show?entryid=12159560-ab82-48a1-b3e4-88ace20475cd
+#
+DIR = "C:/Users/hankea/Documents/My_Projects/Swordfish LL Data/"
+#
+sst1=nc_open(paste0(DIR,'sst.wkmean.1981-1989.nc')) #Data accessed here:
+x1=ncvar_get(sst1,"lon")
+y1=ncvar_get(sst1,"lat")
+z1=ncvar_get(sst1,"time")
+temp1=ncvar_get(sst1,"sst")
+#
+sst2=nc_open(paste0(DIR,'sst.wkmean.1990-present.nc')) #downloaded on April 26, 2023
+x2=ncvar_get(sst2,"lon")
+y2=ncvar_get(sst2,"lat")
+z2=ncvar_get(sst2,"time")
+temp2=ncvar_get(sst2,"sst")
+#
+assign_sst=function(lon,lat,date)
+	{
+	if(date<'1981-10-29')
+		{
+		'Data Not Available'
+		}
+	else
+		{
+		if(date<'1990-01-01')
+			{
+			week=which(z1>julian(as.Date(date),origin=-62091)[1])[1]-1
+			temp1[which(trunc(x1,0)==trunc(lon,0)),which(trunc(y1,0)==trunc(lat,0)),week]
+			}
+		else
+			{
+			week=which(z2>julian(as.Date(date),origin=-62091)[1])[1]-1
+			temp2[which(trunc(x2,0)==trunc(lon,0)),which(trunc(y2,0)==trunc(lat,0)),week]
+			}
+		}
+}
+
+marfis.bftlog[,SSTemp:=sapply(1:.N,function(i)     assign_sst(360+(-1*as.numeric(LONGITUDE[i])),
+                as.numeric(LATITUDE[i]),
+                DATE_FISHED2[i])[1])]
+  marfis.bftlog[,SSTemp:= round(as.numeric(SSTemp), 2)]
+
+Hdata[DATE_FISHED2>"1981-10-29",SSTemp:=sapply(1:.N,function(i) 
+  assign_sst(360+(-1*as.numeric(LON[i])),
+                as.numeric(LAT[i]),
+                DATE_FISHED2[i])[1])]
+  Hdata[,SSTemp:= round(as.numeric(SSTemp), 2)]
+  
+marfis.bftlog[,SSTemp:= round(as.numeric(SSTemp), 2)]
+
+# Validate SST
+marfis.bftlog[,plot(y=COUNTb,SSTemp)]
+grid()
+
+Hdata[,{plot(y=TOTAL_NUM_BFT_CAUGHT_TRIP3,SSTemp);
+  grid()}]
+
+
+```
+
+#Assign OCEAN DEPTH
+```{r}
+
+library(marmap)
+
+# NATL <- getNOAA.bathy(lon1 = -80, lon2 = -25, lat1 = 20, lat2 = 56, resolution = 1)
+# dim(NATL)
+# save(NATL,file='N_Atlantic_Bathymetry.RData')
+load(file= paste0(DIR,'N_Atlantic_Bathymetry.RData'))
+
+marfis.bftlog[!is.na(LATITUDE),
+              Depth := get.depth(NATL,
+              x=-1*as.numeric(LONGITUDE),
+              y=as.numeric(LATITUDE),locator=FALSE)$depth]
+
+Hdata[!is.na(LAT),Depth := get.depth(NATL,x=-LON,y=LAT,locator=FALSE)$depth]
+
+#Calculate DEPTH GRADIENT
+bdiff <- function(x) c(NA,diff(x))
+dx <- t(apply(NATL,1,bdiff)) #calculate differences in at 5 min (grid cell resolution) in x direction
+dy <- apply(NATL,2,bdiff) #calculate differences in at 5 min (grid cell resolution) in y direction
+grad= sqrt(dx^2 + dy^2) #gradient is slope but this a rudimentary function, in reality distances in the x direction are shorter further
+#north. The XY data needs to be converted to an equidistant set of units so this is an approximation
+dimnames(grad)=dimnames(NATL) #replace the "NA" in dimnames
+class(grad)='bathy'
+
+marfis.bftlog[!is.na(LATITUDE),
+              Grad := get.depth(grad,
+              x=-1*as.numeric(LONGITUDE),
+              y=as.numeric(LATITUDE),locator=FALSE)$depth] # actually grad!
+Hdata[!is.na(LAT),Grad := get.depth(grad,x=-LON,y=LAT,locator=FALSE)$depth]
+#
+marfis.bftlog[,{plot(Grad,Depth);grid()}]
+Hdata[,{plot(Grad,Depth);grid()}]
+```
+# Save this detailed version of the data
+```{r}
+save(Hdata, marfis.bftlog, file = "C:/Users/hankea/Documents/My_Projects/Bluefin Single Index/BFT index 2023/AtlanticData_raw_2023.Rdata")
+```
+
+
+# Atlantic Data
+## New data treatments following consultation in 2020
+Atlantic fishery (1996 – 2020)
+Removed other tuna trips
+Included ex-sector fleets (GNB, GNS, PEI, PQ, SF, NFLD)
+Gear (RR, TL, HP)
+Fewer areas (4XNP, 4XO, 4XM, 4XSR, 5ZU, 4XU, 4W)
+Trips are up to 7 days, Count <13 
+July 1st to December 15th 
+
+```{r, Recent transform, include=FALSE}
+# Aggregate on trips: Keep other tuna effort
+SWNSa = marfis.bftlog[!NAFO_UNIT2%in%c("1D") & 
+          FLEET != "SMB" &              
+          MONTH%in%7:12 &
+          COUNTb <= 12 &
+          SEADAYS <= 10,
+         .(Effort = mean(SEADAYS, na.rm=T),
+         Count = mean(COUNTb, na.rm=T),
+         Jday = min(DOY, na.rm=T),
+         Month = min(MONTH, na.rm=T)),
+         by = .(TRIP_ID, Year = YEAR, Port = PORT_LANDED,
+            NAFO = NAFO_UNIT2, HMA = FLEET, GEAR,  OTC)]
+
+# Add a Gear
+SWNSa[,GEAR2 := ifelse(OTC>0,"RRot",GEAR)]
+SWNSa[, GEARb := factor(GEAR2)]
+
+# Combine Nafo areas
+SWNSa[NAFO%in%c("4WK","4WD","4WU"), NAFO := "4W"]
+SWNSa[, NAFO := factor(NAFO)]
+
+# Time
+SWNSa[, YEAR := factor(Year)]
+SWNSa[, MONTH := factor(Month)]
+
+# Fleet
+SWNSa[, HMA := factor(HMA)]
+
+# Aggregate on trips: Drop other tuna effort
+# Recommended
+SWNSb = marfis.bftlog[!NAFO_UNIT2%in%c("1D") & 
+          FLEET != "SMB" &              
+          MONTH%in%7:12 &
+          COUNTb <= 12 &
+          SEADAYS <= 10 &
+          OTC==0,
+         .(Effort = mean(SEADAYS, na.rm=T),
+         Count = mean(COUNTb, na.rm=T),
+         Jday = min(DOY, na.rm=T),
+         Month = min(MONTH, na.rm=T)),
+         by = .(TRIP_ID, Year = YEAR, Port = PORT_LANDED,
+            NAFO = NAFO_UNIT2, HMA = FLEET, GEAR)]
+
+# Add a Gear
+SWNSb[, GEARb := factor(GEAR)]
+
+# Combine Nafo areas
+SWNSb[NAFO%in%c("4WK","4WD","4WU"), NAFO := "4W"]
+SWNSb[, NAFO := factor(NAFO)]
+
+# Time
+SWNSb[, YEAR := factor(Year)]
+SWNSb[, MONTH := factor(Month)]
+
+# Fleet
+SWNSb[, HMA := factor(HMA)]
+```
+
+```{r Past transform, include=FALSE, cache=TRUE}
+
+
+#Hdata
+
+# Aggregate on trips: Drop other tuna effort (nothing before 2003 anyway)
+SWNSc = Hdata[!NAFO_UNIT2%in%c("1D") & 
+          YEAR<2003 & YEAR>1989 &
+          FLEET != "SMB" & FLEET!= "NFLD" &
+          MONTH%in%7:12 &
+          TOTAL_NUM_BFT_CAUGHT_TRIP3 <= 12 &
+          OTC == 0 &
+          SEADAYS <= 10,
+         .(Effort = sum(SEADAYS, na.rm=T),
+         Count = sum(TOTAL_NUM_BFT_CAUGHT_TRIP3, na.rm=T),
+         Jday = min(DOY, na.rm=T),
+         Month = min(MONTH, na.rm=T)),
+         by = .(TRIP_ID, Year = YEAR, Port = PORT_LANDED,
+            NAFO = NAFO_UNIT2, HMA = FLEET, GEAR)]
+
+# Add a Gear
+SWNSc[, GEARb := factor(GEAR)]
+
+# Combine Nafo areas
+SWNSc[NAFO%in%c("4WK","4WD","4WU","4VU"), NAFO := "4W"]
+SWNSc[NAFO=="4X", NAFO := "4XU"]
+SWNSc[, NAFO := factor(NAFO)]
+
+# Time
+SWNSc[, YEAR := factor(Year)]
+SWNSc[, MONTH := factor(Month)]
+
+# Fleet
+SWNSc[, HMA := factor(HMA)]
+
+# Effort
+SWNSc[,Effort := as.numeric(Effort)]
+
+# Count
+#SWNSc[Year==1995, Count := Count-1]
+```
+# Atlantic data
+```{r}
+DATA1 = SWNSb[Year>=2002,
+              .(Year,YEAR,Effort,Count,HMA,NAFO,Jday,GEARb)]
+DATA2 = SWNSc[Year<2002 ,.(Year,YEAR,Effort,Count,HMA,NAFO,Jday,GEARb)]
+DATA = rbind(DATA2,DATA1)
+DATA = DATA[Year>1995]
+DATA = DATA[Effort<=7&Effort>0]
+DATA = DATA[Count<=12]
+DATA = DATA[!(NAFO=="4W"&Effort>=2),]
+DATA = DATA[!(NAFO=="4XU"&Effort>=5),]
+DATA = DATA[GEARb%in%c("RRt", "TL", "HARP", "RR")]
+DATA[GEARb=="RRt",GEARb:="RR"]
+DATA = DATA[Jday<350]
+DATA[, dum1:=1]
+DATA[, dum2:=1]
+DATA[,YEAR:=factor(YEAR)]
+
+#
+DATA[HMA%in%c("UNK"), HMA := "SF"]
+# Housekeeping on Fleet-Area combinations
+DATA = DATA[!(NAFO=="4XSR"&!HMA=="SF")]
+DATA = DATA[!(HMA=="PQ"&as.numeric(as.character(YEAR))>2010)]
+DATA = DATA[!(NAFO=="4XNP"&HMA=="GNB"&Year>=2017)]
+DATA[NAFO=="5ZU", HMA := "SF"]
+DATA = DATA[!(NAFO=="4XO"&HMA%in%c("PQ","PEI"))]
+DATA[,HMA := factor(HMA)]
+# combine areas
+DATA[NAFO%in%c("4XP","4XN","5ZU"), NAFO := "4XNP"]
+DATA[NAFO%in%c("4XO","4XM"), NAFO := "4XOM"]
+DATA[NAFO%in%c("4XSR"), NAFO := "4XU"]
+DATA[,NAFO := factor(NAFO)]
+DATA[,GEARb := factor(GEARb)]
+DATA[,AREA:= factor(ifelse(NAFO=="4XNP","Offshore","Inshore"))]
+DATA[,FLEET:= factor(ifelse(HMA=="SF","Scotia","Other"))]
+#
+
+DATA[,YFAG := factor(paste(YEAR,FLEET,AREA,GEARb,sep="_"))]
+DATA[,YAG := factor(paste(YEAR,AREA,GEARb,sep="_"))]
+DATA[,Week := cut(Jday, breaks=seq(195,350,7),labels=F)]
+DATA[,NW := factor(paste(NAFO,Week,sep="_"))] 
+DATA[,NWG := factor(paste(NAFO,Week,GEARb,sep="_"))]
+NWG_size = DATA[,.N,NWG]
+#DATA = DATA[NWG%in%NWG_size[N>4,NWG]]
+DATA[,NF := factor(paste(NAFO,HMA,sep="_"))]
+DATA[,NY := factor(paste(NAFO,Year,sep="_"))]
+DATA[,NG := factor(paste(NAFO,GEARb,sep="_"))] 
+NY_size = DATA[,.N,NY]
+#DATA = DATA[NY%in%NY_size[N>2,NY]]
+DATA[,LogEffort := log(Effort)]
+DATA[,GEAR:=GEARb]
+DATA[,GEARb:= NULL]
+#SWNS = DATA[,.(dum,NAFO,HMA,Year,YEAR,Jday,GEAR=GEARb,Count,Effort)]
+```
