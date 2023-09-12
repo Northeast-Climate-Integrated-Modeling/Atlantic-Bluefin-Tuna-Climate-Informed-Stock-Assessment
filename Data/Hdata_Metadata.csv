@@ -28,7 +28,7 @@ DATE_SAILED,Year Month Day of departure,
 NUM_OF_STRIKES,Number of strikes on lines,
 NUM_OF_LINES,Number of lines,
 RND_KGS_251,,Description of variable and possible values
-RND_KGS_252,,Description of variable and possible values
+RND_KGS_252,bluefin,Description of variable and possible values
 RND_KGS_253,,Description of variable and possible values
 RND_KGS_255,,Description of variable and possible values
 RND_KGS_256,,Description of variable and possible values
