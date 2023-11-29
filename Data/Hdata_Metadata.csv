@@ -1,0 +1,52 @@
+Variable,Description,Information needed
+TRIP_ID,"Unique trip identifier; concatenated year, vessel registration number, trip number (within year), month fished, day fished",
+VR_NUMBER,Vessel Registration number,
+TRIP_NUMBER,Trip number for vessel within the year,
+HOME_MGT_AREA,Management area linked to vessel registration,
+HOME_MGT_AREA_fishing,Management area linked to fishing effort,
+PROVINCE_LANDED,Numeric code identifying province where fish were landed,Description of possible values
+DISTRICT_LANDED,Numeric code identifying district where fish were landed,Description of possible values
+PORT_LANDED,Numeric code identifying port where fish were landed,Description of possible values
+TOTAL_HOURS_FISHED,Hours of trip used to fish (preferred measure of effort),
+TOTAL_NUM_BFT_CAUGHT_TRIP3,Total number of BFT caught per vessel trip,
+NAFO_UNIT,Northwest Atlantic Fisheries Organization spatial units (two-character code),
+GEAR,"Gear used (TL= tended line, RR= rod & reel, HARP= harpoon)",
+HOOK_SIZE,Numeric code identifying size of hook,
+Hook_Type,Numeric code identifying type of hook,Description of possible values
+GAUGE_OF_MONO,Monofilament gauge size of lines,
+BAIT,Numeric code identifying type of bait,Description of possible values
+YEAR,Year of trip,
+MONTH,Numeric month of trip,
+DAY,Day of trip,
+BFT_LANDED_WEIGHT_LBS,Total weight of all BFT caught on trip (lbs),Dressed or whole?
+LAT,Decimal degrees atitude at location of capture,
+LON,Decimal degrees longitude at location of capture,
+MON_DOC_ID,Description of variable and possible values,
+LICENCE_ID,Fishing licence number for individual (may be multiple licences on the same trip of a vessel) (not collected until 2003),
+LANDED_DATE,Year Month Day of landing,
+DATE_SAILED,Year Month Day of departure,
+NUM_OF_STRIKES,Number of strikes on lines,
+NUM_OF_LINES,Number of lines,
+RND_KGS_251,,Description of variable and possible values
+RND_KGS_252,bluefin,Description of variable and possible values
+RND_KGS_253,,Description of variable and possible values
+RND_KGS_255,,Description of variable and possible values
+RND_KGS_256,,Description of variable and possible values
+RND_KGS_262,,Description of variable and possible values
+RND_KGS_369,,Description of variable and possible values
+RND_KGS_375,,Description of variable and possible values
+AREA_1_gen,,Description of variable and possible values
+AREA_2_gen,,Description of variable and possible values
+AREA_3_gen,,Description of variable and possible values
+AREA_4_gen,,Description of variable and possible values
+AREA_5_gen,,Description of variable and possible values
+select,,Description of variable and possible values
+DOY,Julian day of year,
+SEADAYS,"Decimal days at sea (ex: 2.5 days is 2 days, 12 hours)",
+DATE_FISHED2,Year Month Day of fishing effort,
+NAFO_UNIT2,Northwest Atlantic Fisheries Organization spatial units (three-character code),Why do NAFO_UNIT and NAFO_UNIT2 sometimes differ?
+FLEET,Fleet code,
+OTC,Sum of dressed weight for all other tuna caught in trip (lbs),
+SSTemp,Weekly mean sea surface temperature derived from NOAA OISST data (deg C),
+Depth,Water depth (m) at point of capture derived from NOAA bathymetry,
+Grad,Depth gradient derived from NOAA bathymetry,
