@@ -1,15 +1,32 @@
-wd='C:/YEAR2020/BFT/LPS/ALL/'
+rm(list=ls())
+
+wd=here('Data/LPS/ALL')
 setwd(wd)
 library(dplyr)
+
+# Create dataframe of state codes
+statecodes <- data.frame(
+  stcode = c(9,10,23,24,25,33,34,36,44,51),
+  state = c('CT', 'DE', 'ME', 'MD', 'MA', 'NH', 'NJ', 'NY', 'RI', 'VA')
+)
+
+# Create dataframe of species size codes
+speccode <- data.frame(
+  prim = c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672),
+  size = c('young school', 'school', 'large school', 'small med',
+           'large med', 'giant', 'unknown', 'school or large school')
+)
 
 ### DATA SECTION
 filepath=wd
 yearly=2002:2010
-monthly=2011:2018
+monthly=2011:2022
 catch_files=sort(c(paste('catch_',yearly,'.csv',sep=''),paste('catch_',rep(monthly,length(6:10)),rep(c('06','07','08','09','10'),length(monthly)),'.csv',sep='')))
 catches=lapply(catch_files,function(x){read.csv(file=x,header=T)})
 main_files=sort(c(paste('main_',yearly,'.csv',sep=''),paste('main_',rep(monthly,length(6:10)),rep(c('06','07','08','09','10'),length(monthly)),'.csv',sep='')))
 mains=lapply(main_files,function(x){read.csv(file=x,header=T)})
+size_files=sort(c(paste('size_',yearly,'.csv',sep=''),paste('main_',rep(monthly,length(6:10)),rep(c('06','07','08','09','10'),length(monthly)),'.csv',sep='')))
+sizes=lapply(size_files,function(x){read.csv(file=x,header=T)})
 
 ### PROCEDURE SECTION
 # MERGE INTO A SINGLE CATCH DATASET
@@ -20,18 +37,33 @@ catch_data$dead[is.na(catch_data$dead)]=0
 catch_data$catch_n=catch_data$kept+catch_data$alive+catch_data$dead
 catches=aggregate(catch_n~id+stcode+docno+year+month+species,data=catch_data,sum)
 #head(catches)
-length(catches[,1]) #89641 with 2002-18 data
+length(catches[,1]) #89641 with 2002-18 data, 111196 with 2002-22 data
+catches=catches[catches$species %in% speccode$prim &
+                  catches$stcode %in% statecodes$stcode,]
 
 # MERGE INTO A SINGLE MAIN DATASET
 main=Reduce(function(x,y){merge(x,y,all.x=TRUE,all.y=TRUE)},mains)
 #head(main)
 length(main[,1])
+main=main[main$prim1 %in% speccode$prim |
+            main$prim2 %in% speccode$prim,]
+main=main[main$stcode %in% statecodes$stcode &
+            main$month %in% c(seq(6:10))&
+            main$prim_op %in% c(1,2,3) &
+            main$fhours>=1 & main$fhours<=24,]
+
+# MERGE INTO A SINGLE SIZE DATASET
+size=Reduce(function(x,y){merge(x,y,all.x=TRUE,all.y=TRUE)},sizes)
 
 # MERGE MAIN AND CATCH DATASETS
 dat=merge(main,catches,all.x=TRUE)  #,all.y=TRUE) #this commented out part includes catches with no associated main record, 2002-2017 included 15 samples with 6 total bluefin
+
+# MERGE MERGED AND SIZE DATASETS
+dat=merge(dat,size,all.x=TRUE,all.y=TRUE)
+
 length(dat[,1])
 #head(dat)
-write.csv(dat,"compiled_data/LPS_compiled_0218.csv")
+write.csv(dat,here("Data/LPS/LPS_compiled_0222.csv"))
 
 # AGGREGATE CATCHES OF HMS TO SAMPLE LEVEL
 agg = group_by(dat, id,year,month,day,inttime,county,stcode,siteno,site_no,sitetype,docno,location,sitetype,

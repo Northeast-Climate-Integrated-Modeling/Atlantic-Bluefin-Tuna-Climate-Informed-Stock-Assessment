@@ -1,0 +1,662 @@
+---
+title: "Atlantic Fishing Data 2023"
+author: "AR Hanke"
+date: "2023-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=12, fig.height=8)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE,error=F)
+
+library(tidyverse)
+library(here)
+library(DT)
+library(pdftools)
+library(patchwork)
+library(ggiraph)
+library(TMB)
+library(units)
+library(VAST)
+library(here)
+library(tidyverse)
+library(beepr)
+library(sf)
+library(rgdal)
+library(sp)
+library(ggcorrplot)
+library(kableExtra)
+library(pander)
+
+# Negate function
+'%notin%' <- function(x,y)!('%in%'(x,y))
+
+# Conversion functions
+SFL_to_CFL = function(x){
+  (-0.8319 + 1.0314*x)
+}
+
+CFL_to_SFL = function(x){
+  (1.85746 + 0.9606*x)
+}
+
+CFL_to_RWT = function(x){
+  (4.944442E-5* (x^2.80941))
+}
+
+RWT_to_CFL = function(x){
+  (x/4.944442E-5)^(1/2.80941)
+}
+
+# Add unitless back as possible unit (removed in units package update Mar 2023)
+#install_unit(symbol='unitless', def='unitless', name='unitless')
+
+# Set GGplot auto theme
+theme_set(theme(panel.grid.major = element_line(color='lightgray'),
+                panel.grid.minor = element_blank(),
+                panel.background = element_blank(),
+                panel.border = element_rect(color='black', size=1, fill=NA),
+                legend.position = "bottom",
+                axis.text.x=element_text(size=11),
+                axis.text.y=element_text(size=11),
+                axis.title.x=element_text(size=12),
+                axis.title.y=element_text(size=12, angle=90, vjust=2),
+                plot.title=element_text(size=14, hjust = 0, vjust = 1.2),
+                plot.caption=element_text(hjust=0, face='italic', size=12)))
+
+```
+
+## Raw data
+
+Data processing begins with loading the RData file that contains bluefin landings records from 1988 to 2022. These records are split across two objects: `Hdata`, which contains historical records from 1988 to 2014, and `marfis.bftlog`, which contains modern records from 2002 to 2022. The method of recording information changed in 2002, thus the split. Notice that there is a significant period of overlap between the two objects; we can remove records from `Hdata` which occur after December 15, 2001. The `marfis.bftlog` object will contain information on the same trips and fish landed, but in a more detailed manner.
+
+We will also load a shapefile of NAFO statistical areas 4R through 5Z and a shapefile of the coastline. These will be used to confirm capture locations for landed fish. 
+
+```{r load}
+# Load data components
+load(here("Data/AtlanticData_raw_2023.Rdata"))
+
+# Load NAFO units
+nafo <- st_read(here('Data/GIS/NAFO_Units2.shp'))
+nafo <- st_make_valid(nafo)
+
+# Load coastline
+coast <- ecodata::coast
+coast <- st_transform(coast, "EPSG:4326")
+
+# Plot
+ggplot() +
+  geom_sf(data=coast) +
+  geom_sf(data=nafo, aes(fill=level_1)) +
+  coord_sf(xlim=c(-72, -50),
+           ylim=c(39, 52)) +
+  labs(fill='NAFO area')
+```
+
+## Clean and filter data
+
+Data will be filtered to the spatio-temporal period of interest. Temporally, we are interested in matching the domain to the available and comparable American data, which begins in 1993. Data prior to 1993 will be discarded. As we intend to use VAST, a spatio-temporal model, we cannot use data without spatial information for the point of capture. Data without valid latitude or longitude records will not be included in this iteration of the model. If there is a reliable method of modeling spatial information for point of capture given landing location, capture NAFO unit, and time spent at sea, I'd be happy to update the input data. But for now, I cannot use data without reliable spatial information in a spatio-temporal model like VAST.
+
+Stakeholders have recommended further filtering the data using the following parameters:  
+* Remove landings where fish was caught before July 1 or after December 15 in any year
+* Remove landings from trips longer than 7 days at sea
+* Remove landings from trips where more than 12 BFT were caught
+* Include ex-sector fleets (boats with home ports not within SWNS historic fishing area)
+* Include only landings using Rod and Reel, Tended Line, or Harpoons as gear
+* Include only landings from areas 4X M-U and 5ZE (Canadian portion of 5Z)
+
+To match American landings, we will use one additional parameter:
+* Remove landings from trips with less than 1 or more than 24 hours of active fishing time
+
+There is also a stakeholder recommendation to remove trips with other tuna catch reported. This is likely suggested because stakeholders only want trips targeting BFT to be incorporated to models which could potentially influence management advice. This is why available data for BFT bycatch in the swordfishing industry will not be used in these models (though this is available as `comland95_03`). Neither the historical nor the modern datasets have variables that identify the primary or secondary targets of the trip. I am not convinced that removing all trips that report *any* other tuna catch is the way to go here. Just as BFT are caught as bycatch in other fisheries, it's totally possible to target BFT and land other species as bycatch. The bycatch species of interest here are Albacore, Yellowfin, and Bigeye tuna. These fish are typically much smaller than BFT. Albacore top out at around 130 lbs, Yellowfin at 400 lbs, and Bigeye at 400 lbs. As a first pass at filtering, trips where landed bluefin weight is less than 75% of combined tuna bycatch weight will be considered non-BFT-targeted trips and removed from analysis.
+
+### Historic data (1993-2001)
+
+Following cleaning, there are 4600 records of trips targeting BFT in SWNS. The original dataset has 39534 records. The following concerns are not addressed:
+
+* This is a massive reduction in data. There are 14403 further records of SWNS BFT catch that pass through our filters that have to be removed due to missing or inaccurate (lat-long on land or outside model spatial domain) spatial information. An entire year (1995) within the temporal domain has no records with spatial information.
+
+* About 790 further records are discarded because they have no effort information. For all these records, landing time and sailing time are missing, total hours fished is reported as 0 hours, and days at sea is reported as 0.5 days. It's clear that 0.5 sea days is an estimate for all these records. Effort information is critical for VAST, so these inaccurate 0-hour-effort records cannot be used.
+
+* I don't think bycatch data was recorded prior to the reporting change in 2002. There's no ecological, biological, or management reason why there would be no bycatch of swordfish or tuna species when catching BFT prior to 2002. Stakeholders want to make sure that only trips targeting BFT as the primary or secondary species make it into these models that may be used to advise management efforts, but we cannot guarantee this filter is applied to the historic (1993-2001) data.
+
+* I do not know the stakeholders' reasoning behind excluding data from some NAFO units. Historic SWNS fishing areas include NAFO areas 4VsWX and 5 (as per BFT IFMP 2017). The coastline associated with the Scotia-Fundy fleet runs from Cape Breton to the Maine border. However, the stakeholders have requested data to be limited to 4X-MNOPSR, 5ZU, and 4W. This removes an area within the Gulf of Maine (4XQ), an area offshore of Georges Bank (4XX, 4XL), and a large offshore swath southeast of Cape Breton Island (4VS). I'm assuming that the exclusion of the offshore areas is intentional and due to low effort, but I don't think the same assumption is valid for inshore areas like 4XQ. Filtering trips to only the given regions would decrease data volume by a further 50 records (3 of which are actually within American waters, statistical unit 5YB). I am inclined to keep records within 4XL and 4XQ, as removing these areas would make weird gaps in our model's spatial domain when later combined with American data.
+
+* It would be great to have more detailed effort information, but number of lines is not recorded prior to the reporting change.
+
+* There are limited records with no catch in the earlier years of the temporal domain, including no records in 1994 and 1995. Given this _and_ the complete missing spatial information for 1995, we may have to adjust temporal domain to begin at 1996.
+
+```{r historic_data}
+# Remove data before 1993 and after 2001 (reporting change in 2002)
+Hdata.orig <- Hdata
+Hdata <- unique(Hdata)
+Hdata <- Hdata[Hdata$YEAR > 1992 & Hdata$YEAR < 2002,]
+
+# Remove data with no spatial information (Any thoughts here?)
+Hdata <- Hdata[!is.na(Hdata$LAT) & !is.na(Hdata$LON),]
+
+# Remove data that takes place before July 1, after Dec 15
+Hdata <- Hdata[Hdata$MONTH >=7,]
+
+# Remove data from trips with more than 24 hours fishing time
+Hdata <- Hdata[Hdata$TOTAL_HOURS_FISHED <= 24 &
+                 Hdata$TOTAL_HOURS_FISHED >= 1,]
+
+# Remove data from trips with more than 12 BFT caught
+Hdata <- Hdata[Hdata$TOTAL_NUM_BFT_CAUGHT_TRIP3 <=12,]
+
+# Remove data from trips longer than 7 days at sea
+Hdata$SEADAYS <- as.numeric(Hdata$SEADAYS)
+Hdata <- Hdata[Hdata$SEADAYS <= 7,]
+
+# Longitude should be negative to reflect western hemisphere locations
+Hdata$LON <-  Hdata$LON * -1
+
+# Create variable for other tuna landings (BET, YFT, ALB)
+# STACAC codes: albacore-252, bigeye-253, yellowfin-256
+# See supporting STACAC documents for other codes
+Hdata$RND_KGS_252[is.na(Hdata$RND_KGS_252)] <- 0
+Hdata$RND_KGS_253[is.na(Hdata$RND_KGS_253)] <- 0
+Hdata$RND_KGS_256[is.na(Hdata$RND_KGS_256)] <- 0
+Hdata$OTC <- Hdata$RND_KGS_252 + Hdata$RND_KGS_253 + Hdata$RND_KGS_256
+# Please consider: bycatch data is likely not recorded prior to the reporting change.
+# Unlikely that there was no bycatch from 1988-2003.
+# I can't pull any other records, so this is what I have to work with.
+
+# Assign NAFO units
+Hdata.sf <- st_as_sf(Hdata, coords=c('LON', 'LAT'))
+st_crs(Hdata.sf) <- "EPSG:4326"
+Hdata2 <- st_intersection(Hdata.sf, nafo)
+
+# Add NAFO unit to data, check compatibility to existing NAFO units
+Hdata.trim <- dplyr::select(Hdata2, TRIP_ID, level_2)
+Hdata <- left_join(Hdata, Hdata.trim, by=c("TRIP_ID"))
+table(Hdata$NAFO_UNIT2, Hdata$level_2)
+# Not sure why there are discrepancies.
+
+# Remove intermediates
+rm(Hdata.sf, Hdata.trim, Hdata2)
+
+# Fix data types
+Hdata <- Hdata %>% 
+  mutate_at(c('PROVINCE_LANDED', 'DISTRICT_LANDED', 'PORT_LANDED'), as.numeric) %>% 
+  mutate_at(c('GEAR', 'FLEET', 'level_2'), as.factor)
+Hdata$NAFO_UNIT <- Hdata$level_2
+
+# Remove observations on land
+Hdata <- Hdata[!is.na(Hdata$NAFO_UNIT),]
+
+# Save only pertinent variables
+Hdata <- dplyr::select(Hdata,
+                       -HOOK_SIZE, -Hook_Type, -GAUGE_OF_MONO,
+                       -BAIT, -AREA_1_gen, -MON_DOC_ID, -NUM_OF_STRIKES,
+                       -RND_KGS_251, -RND_KGS_255, -RND_KGS_262, -RND_KGS_369,
+                       -RND_KGS_375, -AREA_2_gen, -AREA_3_gen, -AREA_4_gen,
+                       -AREA_5_gen, -select, -geometry,
+                       -NAFO_UNIT2, -level_2, -LICENCE_ID, -NUM_OF_LINES,
+                       -RND_KGS_252, -RND_KGS_253, -RND_KGS_256,
+                       -DATE_SAILED, -LANDED_DATE)
+
+# Plot
+Hdata.sf <- st_as_sf(Hdata, coords=c('LON', 'LAT'))
+st_crs(Hdata.sf) <- 'EPSG:4326'
+ggplot() +
+  geom_sf(data=coast) +
+  geom_sf(data=nafo[nafo$level_2 %in%
+                      c('4XL', '4XM', '4XN', '4XO', '4XP', '4XQ', '4XS', '4XR', '5ZEc') |
+                      nafo$level_1 == '4W',],
+          aes(fill=level_2)) +
+  geom_sf(data=Hdata.sf) +
+  coord_sf(xlim=c(-68, -59),
+           ylim=c(39, 48)) +
+  labs(fill='NAFO Unit') +
+  theme(legend.position = 'right')
+
+rm(Hdata.sf)
+```
+
+### Modern data (2002-2022)
+
+Following cleaning, there are records of 10081 records from 5771 unique trips targeting BFT in SWNS. The original dataset has 27800 records from  16743 trips. The following concerns are not addressed:
+
+* This is another big reduction in data. There are 7569 other records from a further 7010 trips that pass through our filters that have to be removed due to missing or inaccurate (lat-long on land or outside model spatial domain) spatial information. Thankfully, there are records within each year of this period, though some years have more than 50% of original records removed from analysis (particularly an issue for 2004-2008).
+
+* Another 305 records from 107 trips are discarded because effort is reported as 0 hours, though they were at sea for at minimum 4 hours.
+
+* Bycatch data may not be fully recorded. No bycatch is recorded in 2009, 2010, 2017, or 2022. It looks like there's a regime shift in reporting bycatch, where it is reported far more frequently 2002-2012 than 2013-2022.
+
+* There are 386 records from 169 trips outside the stakeholder's defined NAFO statistical areas. I am inclined to keep 369 of these records (from 161 trips) that occur in areas 4XQ and 4XL, for the same reasons as outlined above in the historic data editing process.
+
+* Number of lines and further detailed effort information is not available for 4001 records (1835 trips) out of the final dataset. There are also some clearly erroneous values in the number of lines variable, which has values that range from 1 to 1000. Once this value exceeds 20 lines, it gets less believable. Over 100, there's no way it's accurate.
+
+* There's a massive issue with reporting trips with no catch. The filtering process removes all of these records post-2003 because they have no spatial information.
+
+```{r modern_data}
+# Remove duplicates
+marfis.orig <- marfis.bftlog
+marfis.bftlog <- unique(marfis.bftlog)
+
+# Remove data with no spatial information
+marfis.bftlog <- marfis.bftlog[!is.na(marfis.bftlog$LATITUDE) & 
+                                 !is.na(marfis.bftlog$LONGITUDE),]
+
+# Remove data that takes place before July 1, after Dec 15
+marfis.bftlog <- marfis.bftlog[marfis.bftlog$MONTH >=7,]
+marfis.bftlog$DAY <- lubridate::mday(marfis.bftlog$DATE_LANDED2)
+marfis.bftlog$rm[marfis.bftlog$MONTH ==12 & marfis.bftlog$DAY >14] <- 'rm'
+marfis.bftlog <- marfis.bftlog[is.na(marfis.bftlog$rm),]
+marfis.bftlog$rm <- NULL
+
+# Remove data from trips with less than 1 or more than 24 hours fishing time
+marfis.bftlog <- marfis.bftlog[marfis.bftlog$TOTAL_HOURS_FISHED >=1 &
+                                 marfis.bftlog$TOTAL_HOURS_FISHED <= 24,]
+
+# Remove data from trips longer than 7 days at sea
+marfis.bftlog$SEADAYS <- as.numeric(marfis.bftlog$SEADAYS)
+marfis.bftlog <- marfis.bftlog[marfis.bftlog$SEADAYS <= 7,]
+
+# Count fish
+marfis.list <- split(marfis.bftlog, f=marfis.bftlog$TRIP_ID)
+for(i in 1:length(marfis.list)){
+  marfis.list[[i]]$COUNTkl <- nrow(marfis.list[[i]])
+  if(is.na(marfis.list[[i]]$BFT_DRESSED_WEIGHT_LBS_TRIP[1])){
+    marfis.list[[i]]$COUNTkl <- 0
+  }
+}
+marfis.bftlog <- do.call(rbind, marfis.list)
+marfis.bftlog <- marfis.bftlog[with(marfis.bftlog, order(
+  DATE_FISHED2, PROVINCE_LANDED, DISTRICT_LANDED, PORT_LANDED, VR_NUMBER
+)),]
+rownames(marfis.bftlog) <- NULL
+
+# Remove data from trips with more than 12 BFT caught
+marfis.bftlog <- marfis.bftlog[marfis.bftlog$COUNTkl <=12,]
+
+# Fix longitude
+marfis.bftlog$LONGITUDE <- as.numeric(marfis.bftlog$LONGITUDE)
+marfis.bftlog$LONGITUDE <-  marfis.bftlog$LONGITUDE * -1
+
+# Create variable for other tuna landings (BET, YFT, ALB)
+marfis.bftlog$ALB_DRESSED_WEIGHT_LBS_TRIP[is.na(marfis.bftlog$ALB_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+marfis.bftlog$BET_DRESSED_WEIGHT_LBS_TRIP[is.na(marfis.bftlog$BET_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+marfis.bftlog$YFT_DRESSED_WEIGHT_LBS_TRIP[is.na(marfis.bftlog$YFT_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+
+marfis.bftlog$OTC <- marfis.bftlog$BET_DRESSED_WEIGHT_LBS_TRIP + 
+  marfis.bftlog$YFT_DRESSED_WEIGHT_LBS_TRIP + 
+  marfis.bftlog$ALB_DRESSED_WEIGHT_LBS_TRIP
+
+# Confirm NAFO units
+marfis.bftlog.sf <- st_as_sf(marfis.bftlog, coords=c('LONGITUDE', 'LATITUDE'))
+st_crs(marfis.bftlog.sf) <- "EPSG:4326"
+marfis.bftlog2 <- st_intersection(marfis.bftlog.sf, nafo)
+
+# Remove observations within 4S, 4VN (not considered SWNS)
+marfis.bftlog2 <- marfis.bftlog2[marfis.bftlog2$level_2 %notin%
+                                   c('4SS', '4VN'),]
+
+# Add NAFO unit to data, check compatibility to existing NAFO units
+marfis.trim <- dplyr::select(marfis.bftlog2, TRIP_ID, level_2)
+marfis.bftlog3 <- sfheaders::sf_to_df(marfis.bftlog2, fill=T)
+marfis.bftlog3 <- dplyr::select(marfis.bftlog3,
+                                -sfg_id, -point_id)
+table(marfis.bftlog3$NAFO_UNIT2, marfis.bftlog3$level_2)
+# Not sure why there are discrepancies.
+
+# Remove intermediates
+marfis.bftlog <- marfis.bftlog3
+rm(marfis.sf, marfis.bftlog2, marfis.bftlog3, marfis.trim,
+   marfis.list)
+
+# Remove observations on land
+marfis.bftlog <- marfis.bftlog[!is.na(marfis.bftlog$level_2),]
+
+# Keep only pertinent variables
+marfis.bftlog$LAT <- marfis.bftlog$y
+marfis.bftlog$LON <- marfis.bftlog$x
+
+marfis.bftlog <- dplyr::select(marfis.bftlog,
+                               TRIP_ID, VR_NUMBER, TRIP_NUMBER, HOME_MGT_AREA,
+                               PROVINCE_LANDED, DISTRICT_LANDED, PORT_LANDED,
+                               TOTAL_HOURS_FISHED, TOTAL_NUM_BFT_CAUGHT_TRIP,
+                               level_2, GEAR,
+                               YEAR, MONTH, DAY, BFT_LANDED_WEIGHT_LBS,
+                               LAT, LON, DOY, SEADAYS,
+                               DATE_FISHED2, FLEET, OTC, SSTemp, Depth, Grad,
+                               NUM_OF_LINES, FLANK_LENGTH, FLANK_LENGTH_UOM,
+                               DRESSED_LENGTH, DRESSED_LENGTH_UOM,
+                               COUNT, COUNTb, COUNTkl)
+
+# Fix data types
+marfis.bftlog$NAFO_UNIT <- as.factor(marfis.bftlog$level_2)
+marfis.bftlog$level_2 <- NULL
+marfis.bftlog <- marfis.bftlog %>% 
+  mutate_at(c('PROVINCE_LANDED', 'DISTRICT_LANDED', 'PORT_LANDED'), as.numeric) %>% 
+  mutate_at(c('GEAR', 'FLEET', 'HOME_MGT_AREA', 'FLANK_LENGTH_UOM',
+              'DRESSED_LENGTH_UOM'), as.factor)
+
+# Plot
+marfis.sf <- st_as_sf(marfis.bftlog, coords=c('LON', 'LAT'))
+st_crs(marfis.sf) <- 'EPSG:4326'
+ggplot() +
+  geom_sf(data=coast) +
+  geom_sf(data=nafo[nafo$level_2 %in%
+                      c('4XL', '4XM', '4XN', '4XO', '4XP', '4XQ', '4XS', '4XR', '5ZEc') |
+                      nafo$level_1 == '4W',],
+          aes(fill=level_2)) +
+  geom_sf(data=marfis.sf) +
+  coord_sf(xlim=c(-68, -59),
+           ylim=c(39, 48)) +
+  labs(fill='NAFO Unit') +
+  theme(legend.position = 'right')
+
+rm(marfis.sf, marfis.bftlog.sf)
+
+
+```
+
+## Size class information
+
+Next, we want to identify which size class each fish belongs to.
+
+### Modern data
+
+```{r bio-imp_modern}
+# Split data into lists by reported units (flank and dressed length)
+marfis.bftlog$UNITS <- paste0(marfis.bftlog$FLANK_LENGTH_UOM, "_", marfis.bftlog$DRESSED_LENGTH_UOM) 
+marfis.list <- split(marfis.bftlog, f=marfis.bftlog$UNITS)
+
+# Convert non-inch units to inch
+# Naming convention for list items is flank_dressed
+marfis.list[['CM_CM']]$FLANK_CONV <- marfis.list[['CM_CM']]$FLANK_LENGTH * 0.393701
+marfis.list[['CM_CM']]$DRESS_CONV <- marfis.list[['CM_CM']]$DRESSED_LENGTH * 0.393701
+
+marfis.list[['CM_IN']]$FLANK_CONV <- marfis.list[['CM_IN']]$FLANK_LENGTH * 0.393701
+marfis.list[['CM_IN']]$DRESS_CONV <- marfis.list[['CM_IN']]$DRESSED_LENGTH 
+
+marfis.list[['IN_CM']]$FLANK_CONV <- marfis.list[['IN_CM']]$FLANK_LENGTH
+marfis.list[['IN_CM']]$DRESS_CONV <- marfis.list[['IN_CM']]$DRESSED_LENGTH * 0.393701
+
+marfis.list[['IN_IN']]$FLANK_CONV <- marfis.list[['IN_IN']]$FLANK_LENGTH
+marfis.list[['IN_IN']]$DRESS_CONV <- marfis.list[['IN_IN']]$DRESSED_LENGTH
+
+marfis.list[['NA_CM']]$FLANK_CONV <- marfis.list[['NA_CM']]$FLANK_LENGTH
+marfis.list[['NA_CM']]$DRESS_CONV <- marfis.list[['NA_CM']]$DRESSED_LENGTH * 0.393701
+
+marfis.list[['NA_IN']]$FLANK_CONV <- marfis.list[['NA_IN']]$FLANK_LENGTH
+marfis.list[['NA_IN']]$DRESS_CONV <- marfis.list[['NA_IN']]$DRESSED_LENGTH
+
+marfis.list[['NA_NA']]$FLANK_CONV <- NA; marfis.list[['NA_NA']]$DRESS_CONV <- NA
+
+marfis.list[['OUTU_OUTU']]$FLANK_CONV <- marfis.list[['OUTU_OUTU']]$FLANK_LENGTH
+marfis.list[['OUTU_OUTU']]$DRESS_CONV <- marfis.list[['OUTU_OUTU']]$DRESSED_LENGTH
+
+marfis.list[['SF_SF']]$FLANK_CONV <- marfis.list[['SF_SF']]$FLANK_LENGTH
+marfis.list[['SF_SF']]$DRESS_CONV <- marfis.list[['SF_SF']]$DRESSED_LENGTH
+
+marfis.bftlog <- do.call(rbind, marfis.list)
+
+# Flag fish with measurements too large to be realistic
+# Largest BFT landed was 1496 lbs and 151.2 in
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_WT <- 0
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_WT[marfis.bftlog$BFT_LANDED_WEIGHT_LBS > 1495.9] <- 1
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK <- 0
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK[marfis.bftlog$FLANK_CONV > 151.1] <- 1
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_DRESSED <- 0
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_DRESSED[marfis.bftlog$DRESS_CONV > 113] <- 1
+
+# Flag fish with measurements too small to be realistic
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_WT[marfis.bftlog$BFT_LANDED_WEIGHT_LBS < 66] <- 1
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK[marfis.bftlog$FLANK_CONV < 27] <- 1
+marfis.bftlog$BIOLOGICAL_IMPROBABILITY_DRESSED[marfis.bftlog$DRESS_CONV < 20] <- 1
+
+# Check relationships
+marfis.bftlog.good <- marfis.bftlog[marfis.bftlog$BIOLOGICAL_IMPROBABILITY_DRESSED !=1 &
+                                      marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK != 1 &
+                                      marfis.bftlog$BIOLOGICAL_IMPROBABILITY_WT != 1,]
+
+badfish.marfis <- marfis.bftlog[marfis.bftlog$BIOLOGICAL_IMPROBABILITY_DRESSED == 1 &
+                                marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK == 1 &
+                                marfis.bftlog$BIOLOGICAL_IMPROBABILITY_WT ==1,]
+# No fish with completely missing identifiers.
+
+flank.id <- marfis.bftlog[!is.na(marfis.bftlog$FLANK_LENGTH) & marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK !=1,]
+dress.id <- marfis.bftlog[is.na(marfis.bftlog$FLANK_LENGTH) | marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK ==1,]
+dress.id <- dress.id[!is.na(dress.id$DRESSED_LENGTH) & dress.id$BIOLOGICAL_IMPROBABILITY_DRESSED != 1,]
+wt.id <- marfis.bftlog[is.na(marfis.bftlog$FLANK_LENGTH) | marfis.bftlog$BIOLOGICAL_IMPROBABILITY_FLANK == 1,]
+wt.id <- wt.id[is.na(wt.id$DRESSED_LENGTH) | wt.id$BIOLOGICAL_IMPROBABILITY_DRESSED == 1,]
+
+flank.id$size_class[flank.id$FLANK_LENGTH < 59] <- 'Small'
+flank.id$size_class[flank.id$FLANK_LENGTH > 73] <- 'Large'
+flank.id$size_class[is.na(flank.id$size_class)] <- 'Discard'
+
+dress.id$size_class[dress.id$DRESSED_LENGTH < 44] <- 'Small'
+dress.id$size_class[dress.id$DRESSED_LENGTH > 54] <- 'Large'
+dress.id$size_class[is.na(dress.id$size_class)] <- 'Discard'
+
+wt.id$size_class[wt.id$BFT_LANDED_WEIGHT_LBS < 135] <- 'Small'
+wt.id$size_class[wt.id$BFT_LANDED_WEIGHT_LBS > 235] <- 'Large'
+wt.id$size_class[is.na(wt.id$size_class)] <- 'Discard'
+
+marfis.sc <- rbind(flank.id, dress.id, wt.id)
+
+marfis.sc$size_class[marfis.sc$COUNTb == 0] <- 'NoFish'
+table(marfis.sc$size_class)
+
+rm(badfish.marfis, dress.id, flank.id, marfis.bftlog, marfis.dressed,
+   marfis.flank, wt.id)
+```
+
+```{r bio-imp_Hdata, eval=F}
+Hdata <- Hdata[with(Hdata, order(TRIP_ID, VR_NUMBER, LICENCE_ID)),]
+rownames(Hdata) <- NULL
+
+Hdata$BFT_LANDED_WEIGHT_LBS[Hdata$TOTAL_NUM_BFT_CAUGHT_TRIP3 == 0] <- 0
+Hdata$size_class[Hdata$BFT_LANDED_WEIGHT_LBS == 0] <- 'NoFish'
+
+```
+# Atlantic Data
+## New data treatments following consultation in 2020
+Atlantic fishery (1996 – 2020)
+Removed other tuna trips
+Included ex-sector fleets (GNB, GNS, PEI, PQ, SF, NFLD)
+Gear (RR, TL, HP)
+Fewer areas (4XNP, 4XO, 4XM, 4XSR, 5ZU, 4XU, 4W)
+Trips are up to 7 days, Count <13 
+July 1st to December 15th 
+
+```{r, recent_keepOTC, include=FALSE}
+# Keep other tuna effort
+SWNSa = marfis.sc[!NAFO_UNIT2%in%c("1D") & 
+          FLEET != "SMB" &              
+          MONTH%in%7:12 &
+          COUNTb <= 12 &
+          SEADAYS <= 10 & SEADAYS > 0 &
+          TOTAL_HOURS_FISHED >= 1 & TOTAL_HOURS_FISHED < 24,
+         # .(Effort = mean(SEADAYS, na.rm=T),
+         # Count = mean(COUNTb, na.rm=T),
+         # Jday = min(DOY, na.rm=T),
+         # Month = min(MONTH, na.rm=T)),
+         # by = .(TRIP_ID, Year = YEAR, Port = PORT_LANDED,
+         #    NAFO = NAFO_UNIT2, HMA = FLEET, GEAR,  OTC)
+         ]
+
+# Add a Gear
+SWNSa[, GEAR := factor(GEAR)]
+
+# Combine Nafo areas
+SWNSa[NAFO_UNIT2%in%c("4WK","4WD","4WU"), NAFO_UNIT2 := "4W"]
+SWNSa[, NAFO_UNIT2 := factor(NAFO_UNIT2)]
+
+# Time
+SWNSa[, YEAR := factor(YEAR)]
+SWNSa[, MONTH := factor(MONTH)]
+
+# Fleet
+SWNSa[, FLEET := factor(FLEET)]
+
+# Weights
+SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP[SWNSa$COUNTb == 0] <- 0
+
+# Lat-Lon
+SWNSa$LATITUDE <- as.numeric(SWNSa$LATITUDE)
+SWNSa$LONGITUDE <- -1* as.numeric(SWNSa$LONGITUDE)
+
+# Size class
+SWNSa$size_class <- factor(SWNSa$size_class)
+
+# Check effort against other tunas
+SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP[is.na(SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+SWNSa$BET_DRESSED_WEIGHT_LBS_TRIP[is.na(SWNSa$BET_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+SWNSa$ALB_DRESSED_WEIGHT_LBS_TRIP[is.na(SWNSa$ALB_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+SWNSa$YFT_DRESSED_WEIGHT_LBS_TRIP[is.na(SWNSa$YFT_DRESSED_WEIGHT_LBS_TRIP)] <- 0
+SWNSa$OTC[is.na(SWNSa$OTC)] <- 0
+
+skunked <- SWNSa[SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP == 0 &
+                   SWNSa$ALB_DRESSED_WEIGHT_LBS_TRIP == 0 &
+                   SWNSa$BET_DRESSED_WEIGHT_LBS_TRIP == 0 &
+                   SWNSa$YFT_DRESSED_WEIGHT_LBS_TRIP == 0,]
+
+otc <- SWNSa[SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP == 0 &
+               SWNSa$OTC != 0,]
+
+bft <- SWNSa[SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP != 0 &
+                   SWNSa$ALB_DRESSED_WEIGHT_LBS_TRIP == 0 &
+                   SWNSa$BET_DRESSED_WEIGHT_LBS_TRIP == 0 &
+                   SWNSa$YFT_DRESSED_WEIGHT_LBS_TRIP == 0,]
+
+mix <- SWNSa[SWNSa$BFT_DRESSED_WEIGHT_LBS_TRIP != 0 &
+               SWNSa$OTC !=0,]
+
+# Final dataframe should have skunked, bft, and some portion of mix.
+mix.list <- split(mix, f=mix$TRIP_ID)
+
+```
+
+```{r, recent_dropOTC}
+# Drop other tuna effort
+# Recommended
+SWNSb = marfis.bftlog[!NAFO_UNIT2%in%c("1D") & 
+          FLEET != "SMB" &              
+          MONTH%in%7:12 &
+          COUNTb <= 12 &
+          SEADAYS <= 10 &
+          OTC==0,
+         # .(Effort = mean(SEADAYS, na.rm=T),
+         # Count = mean(COUNTb, na.rm=T),
+         # Jday = min(DOY, na.rm=T),
+         # Month = min(MONTH, na.rm=T)),
+         # by = .(TRIP_ID, Year = YEAR, Port = PORT_LANDED,
+         #    NAFO = NAFO_UNIT2, HMA = FLEET, GEAR)
+         ]
+
+# Add a Gear
+SWNSb[, GEARb := factor(GEAR)]
+
+# Combine Nafo areas
+SWNSb[NAFO_UNIT2%in%c("4WK","4WD","4WU"), NAFO := "4W"]
+SWNSb[, NAFO := factor(NAFO_UNIT2)]
+
+# Time
+SWNSb[, YEAR := factor(YEAR)]
+SWNSb[, MONTH := factor(MONTH)]
+
+# Fleet
+SWNSb[, HMA := factor(FLEET)]
+```
+
+```{r past_dropOTC, include=FALSE, cache=TRUE}
+# Aggregate on trips: Drop other tuna effort (nothing before 2003 anyway)
+SWNSc = Hdata[!NAFO_UNIT2%in%c("1D") & 
+          YEAR<2003 & YEAR>1989 &
+          FLEET != "SMB" & FLEET!= "NFLD" &
+          MONTH%in%7:12 &
+          TOTAL_NUM_BFT_CAUGHT_TRIP3 <= 12 &
+          OTC == 0 &
+          SEADAYS <= 10,
+         # .(Effort = sum(SEADAYS, na.rm=T),
+         # Count = sum(TOTAL_NUM_BFT_CAUGHT_TRIP3, na.rm=T),
+         # Jday = min(DOY, na.rm=T),
+         # Month = min(MONTH, na.rm=T)),
+         # by = .(TRIP_ID, Year = YEAR, Port = PORT_LANDED,
+         #    NAFO = NAFO_UNIT2, HMA = FLEET, GEAR)
+         ]
+
+# Add a Gear
+SWNSc[, GEARb := factor(GEAR)]
+
+# Combine Nafo areas
+SWNSc[NAFO_UNIT2%in%c("4WK","4WD","4WU","4VU"), NAFO := "4W"]
+SWNSc[NAFO_UNIT2=="4X", NAFO_UNIT2 := "4XU"]
+SWNSc[, NAFO := factor(NAFO_UNIT2)]
+
+# Time
+SWNSc[, YEAR := factor(YEAR)]
+SWNSc[, MONTH := factor(MONTH)]
+
+# Fleet
+SWNSc[, HMA := factor(FLEET)]
+
+# Effort
+SWNSc[,Effort := as.numeric(SEADAYS)]
+
+# Count
+#SWNSc[Year==1995, Count := Count-1]
+```
+
+# Atlantic data
+```{r}
+DATA1 = SWNSb[Year>=2002,
+              .(Year,YEAR,Effort,Count,HMA,NAFO,Jday,GEARb)]
+DATA2 = SWNSc[Year<2002 ,.(Year,YEAR,Effort,Count,HMA,NAFO,Jday,GEARb)]
+DATA = rbind(DATA2,DATA1)
+DATA = DATA[Year>1995]
+DATA = DATA[Effort<=7&Effort>0]
+DATA = DATA[Count<=12]
+DATA = DATA[!(NAFO=="4W"&Effort>=2),]
+DATA = DATA[!(NAFO=="4XU"&Effort>=5),]
+DATA = DATA[GEARb%in%c("RRt", "TL", "HARP", "RR")]
+DATA[GEARb=="RRt",GEARb:="RR"]
+DATA = DATA[Jday<350]
+DATA[, dum1:=1]
+DATA[, dum2:=1]
+DATA[,YEAR:=factor(YEAR)]
+
+#
+DATA[HMA%in%c("UNK"), HMA := "SF"]
+# Housekeeping on Fleet-Area combinations
+DATA = DATA[!(NAFO=="4XSR"&!HMA=="SF")]
+DATA = DATA[!(HMA=="PQ"&as.numeric(as.character(YEAR))>2010)]
+DATA = DATA[!(NAFO=="4XNP"&HMA=="GNB"&Year>=2017)]
+DATA[NAFO=="5ZU", HMA := "SF"]
+DATA = DATA[!(NAFO=="4XO"&HMA%in%c("PQ","PEI"))]
+DATA[,HMA := factor(HMA)]
+# combine areas
+DATA[NAFO%in%c("4XP","4XN","5ZU"), NAFO := "4XNP"]
+DATA[NAFO%in%c("4XO","4XM"), NAFO := "4XOM"]
+DATA[NAFO%in%c("4XSR"), NAFO := "4XU"]
+DATA[,NAFO := factor(NAFO)]
+DATA[,GEARb := factor(GEARb)]
+DATA[,AREA:= factor(ifelse(NAFO=="4XNP","Offshore","Inshore"))]
+DATA[,FLEET:= factor(ifelse(HMA=="SF","Scotia","Other"))]
+#
+
+DATA[,YFAG := factor(paste(YEAR,FLEET,AREA,GEARb,sep="_"))]
+DATA[,YAG := factor(paste(YEAR,AREA,GEARb,sep="_"))]
+DATA[,Week := cut(Jday, breaks=seq(195,350,7),labels=F)]
+DATA[,NW := factor(paste(NAFO,Week,sep="_"))] 
+DATA[,NWG := factor(paste(NAFO,Week,GEARb,sep="_"))]
+NWG_size = DATA[,.N,NWG]
+#DATA = DATA[NWG%in%NWG_size[N>4,NWG]]
+DATA[,NF := factor(paste(NAFO,HMA,sep="_"))]
+DATA[,NY := factor(paste(NAFO,Year,sep="_"))]
+DATA[,NG := factor(paste(NAFO,GEARb,sep="_"))] 
+NY_size = DATA[,.N,NY]
+#DATA = DATA[NY%in%NY_size[N>2,NY]]
+DATA[,LogEffort := log(Effort)]
+DATA[,GEAR:=GEARb]
+DATA[,GEARb:= NULL]
+#SWNS = DATA[,.(dum,NAFO,HMA,Year,YEAR,Jday,GEAR=GEARb,Count,Effort)]
+```
