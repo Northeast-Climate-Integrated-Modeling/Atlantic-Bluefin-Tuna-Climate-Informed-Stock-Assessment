@@ -29,7 +29,7 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load US data
-us <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata.csv'))
+us <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata2.csv'))
 
 # Load Canada data
 can <- read.csv(here('Data/Canada_Clean/compiled_clean_canada.csv'))
@@ -45,8 +45,8 @@ nao$date <- as.POSIXct(paste0(nao$year, '-',
                        format="%Y-%m-%d")
 
 nao <- nao %>% 
-  filter(year >= 1993 & year <=2022) %>% 
-  filter(month %in% seq(6, 10, 1))
+  filter(year >= 1996 & year <=2022) %>% 
+  filter(month %in% seq(6, 12, 1))
 colnames(nao) <- c('year', 'month', 'day', 'nao', 'date')
 
 nao <- dplyr::select(nao, date, nao)
@@ -59,12 +59,17 @@ head(nao)
 
 can <- merge(can, nao, by=c('date'))
 head(can)
+us$date <- paste0(us$year, '-', str_pad(us$month, 2, 'left', '0'), '-',
+                  str_pad(us$day, 2, 'left', '0'))
+us$date <- as.POSIXct(us$date, format="%Y-%m-%d")
+us <- merge(us, nao, by=c('date'))
+
 
 # Add AMO
 amo <- read.csv(here('Data/Climate_Indices/monthly_amo.csv'))
 amo <- amo %>% 
-  filter(Year >= 1993 & Year <=2022) %>% 
-  filter(Month %in% c('Jun', 'Jul', 'Aug', 'Sep', 'Oct'))
+  filter(Year >= 1996 & Year <=2022) %>% 
+  filter(Month %in% c('Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
 amo$monthno <- match(amo$Month,month.abb)
 amo$yrmo <- paste0(amo$Year, '-', amo$monthno)
 amo <- dplyr::select(amo, yrmo, Value)
@@ -72,9 +77,13 @@ colnames(amo) <- c('yrmo', 'amo')
 can$yrmo <- paste0(can$Year, '-', lubridate::month(can$date))
 can <- merge(can, amo, by=c('yrmo'))
 head(can)
+us$yrmo <- paste0(us$year, '-', lubridate::month(us$date))
+us <- merge(us, amo, by=c('yrmo'))
+
 
 # Remove extraneous
 can <- dplyr::select(can, -yrmo, -date)
+us <- dplyr::select(us, -yrmo, -date)
 
 # Add columns
 can$fhours <- can$Effort * 24
@@ -97,7 +106,7 @@ can <- can %>%
   rename(sst = SST)
 
 us <- us %>% 
-  dplyr::select(-day, -sstsource, -depth, -depthsource, -slp, -prey, -tourn)
+  dplyr::select(-day, -depth, -tourn)
 
 us$Gear <- 'RR'
 
@@ -171,6 +180,11 @@ finaldf <- finaldf %>%
   mutate_at(c('Size_class', 'location', 'Gear'), as.factor)
 
 finaldf <- finaldf[finaldf$catch <=12,]
+
+crap <- as.data.frame(table(finaldf$id))
+crap <- crap[crap$Freq ==1,]
+
+finaldf <- finaldf[finaldf$id %notin% crap$Var1,]
 
 write.csv(finaldf, 
           here('Data/Clean/BFT_BothCountries_VAST2.csv'),

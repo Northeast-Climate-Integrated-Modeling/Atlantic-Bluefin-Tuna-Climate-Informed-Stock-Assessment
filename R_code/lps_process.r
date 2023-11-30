@@ -66,9 +66,13 @@ length(dat[,1])
 write.csv(dat,here("Data/LPS/LPS_compiled_0222.csv"))
 
 # AGGREGATE CATCHES OF HMS TO SAMPLE LEVEL
-agg = group_by(dat, id,year,month,day,inttime,county,stcode,siteno,site_no,sitetype,docno,location,sitetype,
-	prim_op,todayt,category,ppstate,ppstfips,returnt,prim1,prim2,tourn,tourn_name,location,tcode,hook,hook_oth,lines,fhours,bt_live,bt_art,bt_dead,
-	fm_troll,fm_chunk,fm_chum,fm_other,fm_other_oth,party,latddmm,londdmm,miles,depth,sst)
+agg = group_by(dat, id,year,month,day,inttime,county,stcode,siteno,site_no,#sitetype,
+               docno,location,sitetype,
+	prim_op,todayt,category,ppstate,ppstfips,returnt,prim1,prim2,tourn,tourn_name,
+	#location,
+	tcode,hook,hook_oth,lines,fhours,bt_live,bt_art,bt_dead,
+	fm_troll,fm_chunk,fm_chum,fm_other,fm_other_oth,party,latddmm,londdmm,miles,
+	depth,sst)
 sum = summarise(agg, 
 	young_school_bft=sum(catch_n[species%in%c(4673)],na.rm=TRUE),
 	school_bft=sum(catch_n[species%in%c(4677)],na.rm=TRUE),
@@ -92,7 +96,10 @@ sum = summarise(agg,
 	spm=sum(catch_n[species%in%c(3840)],na.rm=TRUE)
 	)
 
-write.csv(sum,file="LPS_trip_level_0218.csv",row.names=FALSE)
+write.csv(sum,
+          here("Data/LPS/LPS_trip_level_0222.csv"),row.names=FALSE)
+
+
        "prim1"                  "prim2"
 
        fhours
