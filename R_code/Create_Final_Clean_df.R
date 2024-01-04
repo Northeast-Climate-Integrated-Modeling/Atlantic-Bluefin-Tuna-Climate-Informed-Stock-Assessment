@@ -8,9 +8,7 @@ library(sf)
 library(here)
 
 # Load data
-dat.1993 <- read.csv(here('Data/Clean/LPS_Pre_2002_Clean.csv'))
-dat.2021 <- read.csv(here('Data/Clean/LPS_Post_2002_Clean.csv'))
-dat <- rbind(dat.1993, dat.2021)
+dat <- read.csv(here('Data/Clean/LPS_LargeTarget_Clean_2024.csv'))
 dat <- dplyr::select(dat, -depth, -sst)
 
 sst <- read.csv(here('Data/Clean/AllYears_UpdatedSST.csv'))
@@ -20,8 +18,7 @@ dep <- dplyr::select(dep, id, depth, depthsource)
 slp <- read.csv(here('Data/Clean/AllYears_IncludeSLP.csv'))
 slp <- dplyr::select(slp, id, slp)
 
-
-rm(dat.1993, dat.2021)
+#rm(dat.1993, dat.2021)
 
 # Check data
 head(dat)

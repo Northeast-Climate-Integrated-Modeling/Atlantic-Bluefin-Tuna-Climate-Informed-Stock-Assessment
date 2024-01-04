@@ -27,13 +27,16 @@ statecodes <- data.frame(
 
 # Create dataframe of species size codes
 speccode <- data.frame(
-  prim = c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672),
-  size = c('young school', 'school', 'large school', 'small med',
-           'large med', 'giant', 'unknown', 'school or large school')
+  prim = c(#4673, 4677, 4678, 4676, 
+    4679, 4671#, 4670, 4672
+    ),
+  size = c(#'young school', 'school', 'large school', 'small med',
+           'large med', 'giant'#, 'unknown', 'school or large school'
+           )
 )
 
 # Load data pulled directly from NMFS
-dat <- read.csv(here('Data/LPS/ALL/LPS_trip_level_0221.csv'))
+dat <- read.csv(here('Data/LPS/ALL/LPS_trip_level_0222.csv'))
 # Reduce dataframe to necessesities
 dat <- dplyr::select(dat,
                      id, year, month, day, tourn,
@@ -43,8 +46,9 @@ dat <- dplyr::select(dat,
                      young_school_bft, school_bft, large_school_bft,
                      small_med_bft, large_med_bft, giant_bft, unk_bft)
 # Add total catch
-dat$tot_bft <- dat$young_school_bft + dat$school_bft + dat$large_school_bft +
-  dat$small_med_bft + dat$large_med_bft + dat$giant_bft + dat$unk_bft
+dat$tot_bft <- #dat$young_school_bft + dat$school_bft + dat$large_school_bft +
+  #dat$small_med_bft + 
+  dat$large_med_bft + dat$giant_bft# + dat$unk_bft
 
 # FILTER -- 
 # June through october, private chartered or headboat, fished bt 1 and 24 hours

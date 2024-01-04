@@ -19,15 +19,6 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.title=element_text(size=14, hjust = 0, vjust = 1.2),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
-# Call in pre-done data stored on GitHub
-nwa <- read.csv(here('VAST_LPS/lpsVAST.csv'))
-# Remove columns that are just old row names
-nwa <- dplyr::select(nwa, -X, -X.1)
-# Remove duplicates
-nwa <- unique(nwa)
-# Focus on data after 2002 (overlaps with what I can find online)
-nwa <- subset(nwa, year > 2001)
-
 # Create dataframe of state codes
 statecodes <- data.frame(
   stcode = c(9,10,23,24,25,33,34,36,44,51),
@@ -42,21 +33,19 @@ speccode <- data.frame(
 )
 
 # Load data pulled directly from NMFS
-dat <- read.csv(here('Data/LPS/ALL/LPS_trip_level_0221.csv'))
+dat <- read.csv(here('Data/Clean/LPS_LargeTarget_TripLevel.csv'))
+# Remove duplicates
+dat <- unique(dat)
 # Reduce dataframe to necessesities
 dat <- dplyr::select(dat,
-                     id, year, month, day,
-                     stcode, prim_op,
-                     prim1, prim2, fhours,
-                     latddmm, londdmm, depth, sst,
-                     young_school_bft, school_bft, large_school_bft,
-                     small_med_bft, large_med_bft, giant_bft, unk_bft)
-# Add total catch
-dat$tot_bft <- dat$young_school_bft + dat$school_bft + dat$large_school_bft +
-  dat$small_med_bft + dat$large_med_bft + dat$giant_bft + dat$unk_bft
+                     -tracker, -control, -docno, -intcode,
+                     -cluster, -sitetype, -site_no, -measur, -given.spec)
 
 # FILTER -- 
-# June through october, private chartered or headboat, fished bt 1 and 24 hours
+# June through October, 
+# private chartered or headboat, 
+# fished bt 1 and 24 hours
+# Targeted large-med or giants
 target_bft <- subset(dat,
                      month %in% c(6:10) &
                      prim_op %in% c(1,2,3) &
@@ -64,8 +53,8 @@ target_bft <- subset(dat,
                      fhours < 24.01)
 # Trips must intentionally target bluefin of some any class
 target_bft=subset(target_bft,
-                  prim1 %in% c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672)|
-                  prim2 %in% c(4673, 4677, 4678, 4676, 4679, 4671, 4670, 4672))
+                  prim1 %in% c(4679, 4671)|
+                  prim2 %in% c(4679, 4671))
 
 # Alter state from code to abbrev
 target_bft <- merge(target_bft, statecodes, by=c('stcode'))
@@ -110,7 +99,29 @@ ggplot(coast) +
   coord_sf(xlim=c(st_bbox(bft_sf)[1], st_bbox(bft_sf)[3]),
            ylim=c(st_bbox(bft_sf)[2], st_bbox(bft_sf)[4]))
 
-# There's a few observations that are way out there-- Greenland??
+# Some of these have accidentally flipped lat-lon
+flipped1 <- target_bft[round(as.numeric(substr(target_bft$latddmm,
+                                              start=1, stop=2)))
+                      > 45,]
+flipped <- flipped1[flipped1$lon > -45,]
+flipped$klon <- flipped$lat * -1
+flipped$klat <- flipped$lon * -1
+flipped <- flipped %>% 
+  dplyr::select(-lon, -lat) %>% 
+  rename(lat = klat) %>% 
+  rename(lon = klon)
+target_bft <- target_bft[target_bft$id %notin% flipped1$id,]
+target_bft <- rbind(target_bft, flipped)
+
+# Plot again
+bft_sf <- st_as_sf(target_bft, coords=c('lon', 'lat'), crs='EPSG:4326')
+ggplot(coast) +
+  geom_sf(fill='darkgray') +
+  geom_sf(data=bft_sf, cex=0.5) +
+  coord_sf(xlim=c(st_bbox(bft_sf)[1], st_bbox(bft_sf)[3]),
+           ylim=c(st_bbox(bft_sf)[2], st_bbox(bft_sf)[4]))
+
+# There's a few observations that are way out there in Canadian waters??
 # Pull out observations not in area of interest
 full_data <- target_bft
 target_bft <- subset(target_bft, target_bft$lat > 35 & target_bft$lat < 48)
@@ -128,11 +139,11 @@ ggplot(coast) +
 onland <- st_intersection(bft_sf, coast)
 onland.df <- target_bft[target_bft$id %in% onland$id,]
 # Put these to the side to check them out
-maybekeep <- onland.df[onland.df$id %in% nwa$id,]
+maybekeep <- target_bft[target_bft$id %in% onland.df$id,]
 maybekeep <- st_as_sf(maybekeep, coords=c('lon', 'lat'), crs='EPSG:4326')
 # Remove
 target_bft <- target_bft[target_bft$id %notin% onland$id,]
-bft_sf <- bft_sf[bft_sf$id  %notin% onland$id,]
+bft_sf <- bft_sf[bft_sf$id %notin% onland$id,]
 # Plot just to see
 ggplot(coast) +
   geom_sf(fill='darkgray') +
@@ -140,30 +151,29 @@ ggplot(coast) +
   geom_sf(data=maybekeep, col='red', cex=0.5) +
   coord_sf(xlim=c(-77, -67),
            ylim=c(36, 46))
-# Right. I am willing to keep the points on Block Island and north of Gloucester
-# But the southern ones are too far inland and there are 64 stacked points at 
-# Gloucester, which clearly isn't right and will skew results.
-
-defkeep <- sfheaders::sf_to_df(maybekeep, fill=T)
-defkeep <- subset(defkeep, defkeep$y > 40 & round(defkeep$y,2) != 42.67 &
-                    round(defkeep$y,2) != 41.63 &
-                    defkeep$x > -72)
-defkeep <- dplyr::select(defkeep, -sfg_id, -point_id)
-table(defkeep$x)
-# Cool. There are a few instances of 2 stacked points, but that's not too bad.
-defkeep <- st_as_sf(defkeep, coords=c('x', 'y'), crs="EPSG:4326")
 # Plot just to see
 ggplot(coast) +
   geom_sf(fill='darkgray') +
-  geom_sf(data=bft_sf, cex=0.5) +
-  geom_sf(data=defkeep, col='red', cex=0.5) +
-  coord_sf(xlim=c(-72, -70),
-           ylim=c(41, 44))
-# Great. Plug those 8 observations back in.
-reenter.society <- full_data[full_data$id %in% defkeep$id,]
-target_bft <- rbind(target_bft, reenter.society)
+  geom_sf(data=maybekeep, cex=0.5,
+          aes(col=state)) +
+  coord_sf(xlim=c(st_bbox(maybekeep)[1], st_bbox(maybekeep)[3]),
+           ylim=c(st_bbox(maybekeep)[2], st_bbox(maybekeep)[4]))
+# Right. I cannot keep these.
 
-# Calculate SST in celsius
+# Shift back to df
+target_bft <- sfheaders::sf_to_df(bft_sf, fill=T)
+target_bft <- target_bft %>% 
+  dplyr::select(-sfg_id, -point_id, -latmm, 
+                -lonmm, -latddmm, -londdmm) %>% 
+  rename(lon=x) %>% 
+  rename(lat=y) %>% 
+  dplyr::select(-catch, -hook, -gear)
+
+# Order
+target_bft <- target_bft[with(target_bft, order(year, month, day, state)),]
+rownames(target_bft) <- NULL
+
+# Calculate SST in Celsius
 target_bft$sst[target_bft$sst > 90] <- NA
 target_bft$sst <- weathermetrics::fahrenheit.to.celsius(target_bft$sst, 
                                                         round = 2)
@@ -171,10 +181,49 @@ target_bft$sst <- weathermetrics::fahrenheit.to.celsius(target_bft$sst,
 target_bft$depth <- target_bft$depth * -1
 target_bft$depth[target_bft$depth < -9000] <- NA
 
-# Order 
-target_bft <- target_bft[with(target_bft, order(year, month, day, id)),]
-rownames(target_bft) <- NULL
+# View
+target_bft$lines[target_bft$lines > 90] <- NA
+target_bft$party[target_bft$party > 90] <- NA
+
+target_bft$bt_live[target_bft$bt_live > 1] <- NA
+target_bft$bt_dead[target_bft$bt_dead > 1] <- NA
+target_bft$bt_art[target_bft$bt_art > 1] <- NA
+target_bft$fm_troll[target_bft$fm_troll > 1] <- NA
+target_bft$fm_chunk[target_bft$fm_chunk > 1] <- NA
+target_bft$fm_chum[target_bft$fm_chum > 1] <- NA
+
+target_bft$bt_live[target_bft$bt_live == 0] <- 'No'
+target_bft$bt_dead[target_bft$bt_dead == 0] <- 'No'
+target_bft$bt_art[target_bft$bt_art == 0] <- 'No'
+target_bft$fm_troll[target_bft$fm_troll == 0] <- 'No'
+target_bft$fm_chunk[target_bft$fm_chunk == 0] <- 'No'
+target_bft$fm_chum[target_bft$fm_chum == 0] <- 'No'
+
+target_bft$bt_live[target_bft$bt_live == 1] <- 'Yes'
+target_bft$bt_dead[target_bft$bt_dead == 1] <- 'Yes'
+target_bft$bt_art[target_bft$bt_art == 1] <- 'Yes'
+target_bft$fm_troll[target_bft$fm_troll == 1] <- 'Yes'
+target_bft$fm_chunk[target_bft$fm_chunk == 1] <- 'Yes'
+target_bft$fm_chum[target_bft$fm_chum == 1] <- 'Yes'
+
+target_bft$prim_op[target_bft$prim_op == 1] <- 'Private'
+target_bft$prim_op[target_bft$prim_op == 2] <- 'Charter'
+target_bft$prim_op[target_bft$prim_op == 3] <- 'Party'
+
 head(target_bft)
+target_bft <- target_bft %>% 
+  mutate_at(c('prim_op', 'bt_live', 'bt_art', 'bt_dead',
+              'fm_troll', 'fm_chunk', 'fm_chum',
+              'state', 'primary', 'secondary'), as.factor)
+summary(target_bft)
+
+
+
+## AS OF JANUARY 2024, STOP HERE. YOU DO NOT HAVE TO COMPLETE CLEANING 
+## 1993-2001.
+write.csv(target_bft,
+          here('Data/Clean/LPS_LargeTarget_Clean_2024.csv'),
+          row.names = F)
 
 # Are there obsevations in the prepared data that don't match my data
 # This would obviously exclude data prior to 2002 (I don't have access to it)

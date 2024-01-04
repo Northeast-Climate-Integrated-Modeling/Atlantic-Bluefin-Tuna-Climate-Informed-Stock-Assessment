@@ -29,12 +29,13 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load US data
-us <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata2.csv'))
+us <- read.csv(here('Data/Clean/LPS_LargeTarget_Clean_2024.csv'))
 
 # Load Canada data
 can <- read.csv(here('Data/Canada_Clean/compiled_clean_canada.csv'))
 can$date <- as.Date(paste(can$Year, can$Jday, sep="-"),"%Y-%j")
 can$date <- as.POSIXct(can$date)
+can <- can[can$Year >=2002,]
 
 # Merge with climate indices
 # Add NAO
@@ -45,7 +46,7 @@ nao$date <- as.POSIXct(paste0(nao$year, '-',
                        format="%Y-%m-%d")
 
 nao <- nao %>% 
-  filter(year >= 1996 & year <=2022) %>% 
+  filter(year >= 2002 & year <=2022) %>% 
   filter(month %in% seq(6, 12, 1))
 colnames(nao) <- c('year', 'month', 'day', 'nao', 'date')
 
@@ -68,7 +69,7 @@ us <- merge(us, nao, by=c('date'))
 # Add AMO
 amo <- read.csv(here('Data/Climate_Indices/monthly_amo.csv'))
 amo <- amo %>% 
-  filter(Year >= 1996 & Year <=2022) %>% 
+  filter(Year >= 2002 & Year <=2022) %>% 
   filter(Month %in% c('Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
 amo$monthno <- match(amo$Month,month.abb)
 amo$yrmo <- paste0(amo$Year, '-', amo$monthno)
@@ -80,6 +81,8 @@ head(can)
 us$yrmo <- paste0(us$year, '-', lubridate::month(us$date))
 us <- merge(us, amo, by=c('yrmo'))
 
+# Day
+can$day <- lubridate::day(can$date)
 
 # Remove extraneous
 can <- dplyr::select(can, -yrmo, -date)
@@ -90,7 +93,7 @@ can$fhours <- can$Effort * 24
 
 can <- can %>% 
   dplyr::select(Weight_Class, Trip_ID, Vessel_ID, spacetime,
-                Year, Month, Jday, fhours, longitude, latitude,
+                Year, Month, day, Jday, fhours, longitude, latitude,
                 COUNT_for_size, SST, nao, amo, Gear)
 can <- can %>% 
   rename(Size_class = Weight_Class) %>% 
@@ -106,7 +109,7 @@ can <- can %>%
   rename(sst = SST)
 
 us <- us %>% 
-  dplyr::select(-day, -depth, -tourn)
+  dplyr::select(-depth)
 
 us$Gear <- 'RR'
 
@@ -118,7 +121,24 @@ us$Gear <- 'RR'
 us$location <- 'us'
 can$location <- 'can'
 
+# Remove smaller sizes from Canada
+can <- can[can$Size_class == 'Large',]
+
+# Edit for merging
+can <- dplyr::select(can, -Size_class)
+us <- dplyr::select(us, -prim_op, -lines, -party, -bt_art, -bt_live, -bt_dead,
+                    -fm_troll, -fm_chunk, -fm_chum, -state, -primary, 
+                    -secondary)
+us <- us %>% 
+  rename(catch = catch_n)
+
 both <- rbind(can, us)
+
+both <- dplyr::select(both,
+                      id, location, year, month, day, lon, lat,
+                      fhours, Gear, catch, sst, nao, amo)
+both <- both[with(both, order(location, year, month, id)),]
+rownames(both) <- NULL
 
 # Add depth
 # Pull NOAA bathymetry data
@@ -156,6 +176,16 @@ nwat <- st_transform(nwat, 'EPSG:4326')
 both.sf <- st_as_sf(both, coords=c('lon', 'lat'))
 st_crs(both.sf) <- 'EPSG:4326'
 
+# Plot
+coast <- st_transform(ecodata::coast, st_crs(both.sf))
+
+ggplot() +
+  geom_sf(data=coast, fill="gray") +
+  geom_sf(data=nwat, col='blue', fill=NA) +
+  geom_sf(data=both.sf, cex=0.4) +
+  coord_sf(xlim=c(st_bbox(nwat)[1], st_bbox(nwat)[3]),
+           ylim=c(st_bbox(nwat)[2], st_bbox(nwat)[4]))
+
 good <- st_intersection(both.sf, nwat)
 
 # This is it. Save.
@@ -166,26 +196,62 @@ finaldf <- finaldf %>%
   rename(lon=x) %>% 
   rename(lat=y)
 
-finaldf$Size_class[finaldf$Size_class == 'large'] <- 'Large'
-finaldf$Size_class[finaldf$Size_class == 'small'] <- 'Small'
-finaldf <- finaldf[finaldf$Size_class != 'Medium',]
-
 finaldf <- finaldf[finaldf$BATHY.DEPTH < 0,]
 
 finaldf$BATHY.DEPTH <- finaldf$BATHY.DEPTH * -1
 
-finaldf <- finaldf[finaldf$year >= 1996,]
+finaldf <- finaldf[finaldf$year >= 2002,]
 
 finaldf <- finaldf %>% 
-  mutate_at(c('Size_class', 'location', 'Gear'), as.factor)
+  mutate_at(c('location', 'Gear'), as.factor)
 
 finaldf <- finaldf[finaldf$catch <=12,]
 
-crap <- as.data.frame(table(finaldf$id))
-crap <- crap[crap$Freq ==1,]
-
-finaldf <- finaldf[finaldf$id %notin% crap$Var1,]
+summary(finaldf)
 
 write.csv(finaldf, 
-          here('Data/Clean/BFT_BothCountries_VAST2.csv'),
+          here('Data/Clean/BFT_BothCountries_VAST3.csv'),
           row.names = F)
+
+rm(list=setdiff(ls(), "finaldf"))
+
+### Plot check ###
+# Load spatial information
+coast <- ecodata::coast
+coast <- st_transform(coast, "EPSG:4326")
+us <- st_read(here('Data/GIS/NWAtlantic.shp'), quiet=T)
+us <- st_transform(us, st_crs(coast))
+us$Region <- 'US'
+us <- dplyr::select(us, -FID)
+can <- st_read(here('Data/GIS/CanadaEEZ.shp'), quiet=T)
+can <- st_transform(can, st_crs(coast))
+can$Region <- 'Canada'
+can <- dplyr::select(can, -OBJECTID, -Id, -Shape_Leng, -Shape_Area)
+stocks <- rbind(us, can)
+stocks <- st_transform(stocks, st_crs(coast))
+stocks <- st_make_valid(stocks)
+
+# COnvert to sf
+surv.sf <- st_as_sf(finaldf, coords=c('lon', 'lat'))
+st_crs(surv.sf) <- st_crs(coast)
+
+# Plot
+yp.l.1 <- ggplot() +
+  geom_sf(data=stocks, 
+          aes(fill=Region), alpha=0.1) +
+  geom_sf(data=coast) +
+  geom_sf(data=surv.sf[surv.sf$catch !=0,],
+          aes(cex=catch),
+          cex=0.75, alpha=0.7) +
+  # geom_sf(data=surv.sf[surv.sf$catch ==0,],
+  #         pch='x', col='black',
+  #         cex=0.75) +
+  scale_color_viridis_c(option='viridis') +
+  coord_sf(xlim=c(-78, -55),
+           ylim=c(35, 47)) +
+    facet_wrap(vars(year))
+
+ggsave(plot=yp.l.1,
+       filename=here('Plot_Output/LargeSize_Dist_0222.png'),
+       device='png',
+       height=7.5, width=10, units = 'in')
