@@ -34,23 +34,21 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 #list of SST dataframes
 SSTdfs <- list.files(here("Data/OISST/"), pattern = "*.rds")
 # Remove 2021 (no 2021 canadian data)
-SSTdfs <- SSTdfs[1:28]
+SSTdfs <- SSTdfs[10:30]
 
 # Create empty tibble to fill
 stn_OISST <- tibble()
 
 # Load station data
 # Load data
-stations <- read.csv(here('Data/Clean/Canada_landings.csv'))
+stations <- read.csv(here('Data/Clean/BFT_BothCountries_VAST3.csv'))
 # Confirm all have dats
 stations[is.na(stations$year),]
 stations[is.na(stations$month),]
 stations[is.na(stations$day),]
-# Ah! Problem. Not sure how this happened, but the correct day is the 8th.
-stations$day[is.na(stations$day)] <- 8
 
 # Remove large category (it's fine, it's a spatial duplicate of small.)
-stations <- subset(stations, Size_class == 'small')
+#stations <- subset(stations, Size_class == 'small')
 
 stations$DATE <- paste0(stations$year, '-',
                         str_pad(stations$month, 2, "left", "0"), "-",
@@ -62,8 +60,14 @@ stations$DATE <- as.POSIXct(stations$DATE,
 stations$yrmody <- paste0(stations$year, 
                           str_pad(stations$month, 2, "left", '0'), 
                           str_pad(stations$day, 2, "left", '0'))
+
+stations <- stations[is.na(stations$sst),]
+# stations <- dplyr::select(stations,
+#                           -year, -month, -day, -sst, -yrmody)
+
 stations <- st_as_sf(stations, coords=c("lon", "lat"),
                      na.fail=T)
+
 #stations <- subset(stations, YEAR > 1981)
 
 # Initialize progress bar
@@ -109,6 +113,14 @@ for(df in SSTdfs){
                                }
   )))
   
+  yrdietOISST <- yrdietOISST %>% 
+    dplyr::select(-year.x, -month.x, -day.x, -sst.x, -yrmody.x) %>% 
+    rename(year=year.y) %>% 
+    rename(month=month.y) %>% 
+    rename(day=day.y) %>% 
+    rename(sst=sst.y) %>% 
+    rename(yrmody=yrmody.y)
+  
   # Bind one year of the loop to the initialized tibble
   stn_OISST <- rbind(stn_OISST, yrdietOISST)
   
@@ -116,6 +128,18 @@ for(df in SSTdfs){
   close(pb)
   
 }
+
+stn_OISST <- sfheaders::sf_to_df(stn_OISST, fill=T)
+
+stn_OISST <- stn_OISST %>% 
+  dplyr::select(-yrmody, -declat, -declon, -sfg_id,
+                -point_id, -DATE) %>% 
+  rename(lon=x) %>% 
+  rename(lat=y)
+
+stations <- read.csv(here('Data/Clean/BFT_BothCountries_VAST3.csv'))
+stations <- stations[!is.na(stations$sst),]
+stations <- rbind(stations, stn_OISST)
 
 # Save output
 #saveRDS(stn_OISST, here("data/RData_Storage/stn_OISST.rds"))
@@ -146,7 +170,7 @@ comparesst <- agg_stn_all_OISST %>%
   na.omit()
 
 # Set sequence of years to plot
-yearstoplot <- seq(1992, 2020)
+yearstoplot <- seq(2002, 2022)
 
 # Plot comparisons, check for adhesion to 1:1 line
 for(i in 1:length(yearstoplot)){
