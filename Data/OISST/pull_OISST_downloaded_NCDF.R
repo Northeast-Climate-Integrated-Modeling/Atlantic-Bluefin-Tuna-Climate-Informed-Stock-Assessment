@@ -23,7 +23,7 @@ source(here("R_code/utilities/raster_to_sstdf_func.R"))
 varname <- 'sst'
 
 # Set period of years to work with
-years <- 1993:2021
+years <- 2022:2022
 
 # Loop through years
 for(i in years) {
