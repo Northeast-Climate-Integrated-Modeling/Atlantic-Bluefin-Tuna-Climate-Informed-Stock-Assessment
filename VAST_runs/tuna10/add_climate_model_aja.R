@@ -39,7 +39,7 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 
 #### Add sample information and covars ####
 # Load data
-surveys <- read.csv(here("Data/Clean/BFT_BothCountries_VAST2.csv"))
+surveys <- read.csv(here("Data/Clean/BFT_BothCountries_VAST3.csv"))
 
 # Remove points not in model domain (on land)
 region_shape <- st_read(here('Data/GIS/Combined_Bluefin2.shp'))
@@ -63,6 +63,9 @@ surveys <- surveys[!is.na(surveys$amo) &
 # Save sampling data
 survs <- surveys
 
+# Remove 2022 data
+#survs <- surveys[surveys$year < 2022,]
+
 survs$RESPONSE <- as_units(survs$catch, 'counts')
 survs$swept <- as_units(survs$fhours, 'unitless')
 survs$class <- paste0(survs$location, " ", survs$Gear)
@@ -73,19 +76,19 @@ survs$vessel <- as.numeric(as.factor(paste0(survs$location, " ",
 # Can Tendedline: 2
 # US RodReel: 3
 
-survs$AGEGROUP <- as.numeric(factor(survs$Size_class, levels=c(
-  'Small', 
-  'Large'
-  )
-  )) - 1
-# Small: 0
-# Large: 1
+# survs$AGEGROUP <- as.numeric(factor(survs$Size_class, levels=c(
+#   'Small', 
+#   'Large'
+#   )
+#   )) - 1
+# # Small: 0
+# # Large: 1
 
 survs <- dplyr::select(survs, lon, lat, year, RESPONSE, 
-                       AGEGROUP, 
+                       #AGEGROUP, 
                        vessel, swept)
 names(survs) <- c('Lon', 'Lat', 'Year', 'Response_variable', 
-                  'Age', 
+                  #'Age', 
                   'vessel', 'swept')
 str(survs)
 summary(survs)
@@ -93,11 +96,11 @@ summary(survs)
 # Save covariates
 covars <- dplyr::select(surveys,
                         lon, lat, year,
-                        BATHY.DEPTH, nao, amo, sst, Size_class)
+                        BATHY.DEPTH, nao, amo, sst)
 
 names(covars) <- c('Lon', 'Lat', 'Year', names(covars)[4:ncol(covars)])
 table(covars$Year)
-covars <- covars[covars$Size_class == 'Large',]
+#covars <- covars[covars$Size_class == 'Large',]
 
 
 # Test correlation
@@ -231,12 +234,12 @@ gc()
 
 #### Run model ####
 # Only larges for this run
-survs <- survs[survs$Age == 1,]
+# survs <- survs[survs$Age == 1,]
 #scaled.covars <- unique(scaled.covars)
 
 # Set year, category, strata labels
 #cat.labs <- c('Small', 'Large')
-year.labs <- seq(1996, 2022)
+year.labs <- seq(2002, 2022)
 strat.labs <- c('US', 'Canada', 'ALL')
 
 # Make settings
@@ -287,7 +290,7 @@ fit = fit_model(
     settings = settings, 
     
   # Turn on joint precision (need for range edges)
-    getJointPrecision = TRUE,
+    #getJointPrecision = TRUE,
   
   # Call survey data info
     Lat_i = survs[,'Lat'], 
@@ -314,7 +317,7 @@ fit = fit_model(
   
   # Tell model to build but not run
     build_model = TRUE,
-    run_model = TRUE
+    run_model = FALSE
 
     )
 
