@@ -26,3 +26,4 @@ Data/SWNS_Clean_2002_2022.csv
 Data/SWNS_trip_unrestricted_2002_2018.Rdata
 Data/comland95_03_detail.RData
 VAST_runs/tuna10_usonly/tuna10_usonly.RData
+VAST_runs/tuna10/tuna10_usonly.RData
