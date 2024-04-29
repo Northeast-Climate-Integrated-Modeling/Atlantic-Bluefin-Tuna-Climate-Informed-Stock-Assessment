@@ -5,19 +5,16 @@
 *.Ruserdata
 schema.ini
 .Rproj.user
-Background_Info/~$Tsizeclass.doc
 Data/Prey_Data
-VAST_runs/tuna8/tuna_8.RData
+Data/Clean
+Data/LPS
+Data/Canada_Clean
+Data/AtlanticData_raw_2023.RData
 Data/DisaggregatedSWNSdata.RData
 Data/2020GULF.RData
 Data/comland95_03_detail.RData
 Data/Historical GSL data 2020 ver.Rdata
 Data/SWNS_trip_unrestricted_2002_2018.Rdata
-Data/Clean
-Data/LPS
-Data/AtlanticData_raw_2023.RData
-VAST_runs/tuna9/tuna_9.RData
-Data/Canada_Clean
 Data/2020GULF.RData
 Data/DisaggregatedSNWSdata.Rdata
 Data/Historical GSL data 2020 ver.Rdata
@@ -25,5 +22,4 @@ Data/Historical_Clean_2023.csv
 Data/SWNS_Clean_2002_2022.csv
 Data/SWNS_trip_unrestricted_2002_2018.Rdata
 Data/comland95_03_detail.RData
-VAST_runs/tuna10_usonly/tuna10_usonly.RData
-VAST_runs/tuna10/tuna10_usonly.RData
+VAST_runs/*
