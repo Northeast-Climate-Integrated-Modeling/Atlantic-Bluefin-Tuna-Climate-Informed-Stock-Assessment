@@ -33,7 +33,7 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 
 #list of SST dataframes
 SSTdfs <- list.files(here("Data/OISST/"), pattern = "*.rds")
-# Remove 2021 (no 2021 canadian data)
+# Keep only 2002-2022
 SSTdfs <- SSTdfs[10:30]
 
 # Create empty tibble to fill
@@ -41,7 +41,7 @@ stn_OISST <- tibble()
 
 # Load station data
 # Load data
-stations <- read.csv(here('Data/Clean/BFT_BothCountries_VAST3.csv'))
+stations <- read.csv(here('Data/Clean/BFT_BothCountries_Large_VAST_5.csv'))
 # Confirm all have dats
 stations[is.na(stations$year),]
 stations[is.na(stations$month),]
@@ -60,6 +60,9 @@ stations$DATE <- as.POSIXct(stations$DATE,
 stations$yrmody <- paste0(stations$year, 
                           str_pad(stations$month, 2, "left", '0'), 
                           str_pad(stations$day, 2, "left", '0'))
+
+stations <- stations %>% 
+  rename(sst = oisst)
 
 stations <- stations[is.na(stations$sst),]
 # stations <- dplyr::select(stations,
@@ -135,10 +138,11 @@ stn_OISST <- stn_OISST %>%
   dplyr::select(-yrmody, -declat, -declon, -sfg_id,
                 -point_id, -DATE) %>% 
   rename(lon=x) %>% 
-  rename(lat=y)
+  rename(lat=y) %>%
+  rename(sst=oisst)
 
-stations <- read.csv(here('Data/Clean/BFT_BothCountries_VAST3.csv'))
-stations <- stations[!is.na(stations$sst),]
+stations <- read.csv(here('Data/Clean/BFT_BothCountries_Large_VAST_5.csv'))
+stations <- stations[!is.na(stations$oisst),]
 stations <- rbind(stations, stn_OISST)
 
 # Save output

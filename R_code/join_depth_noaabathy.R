@@ -26,12 +26,12 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load station data from OISST-SST merge
-stations <- read.csv(here('Data/Clean/AllYears_Canada_UpdatedSST.csv'))
+stations <- read.csv(here('Data/Clean/LPS_SmallTarget_Clean_2024_2.csv'))
 # Remember this is just station data, missing catch data from large category
 head(stations)
 
 # Load GEBCO 15 arc second bathy grid
-bathy_rast <- raster(here('Data/Bathy/gebco_2022_n50.0_s40.0_w-70.0_e-50.0.asc'))
+bathy_rast <- raster(here('Data/Bathy/gebco_2023_n45.9456_s34.7673_w-78.5418_e-64.0775.asc'))
 # Reproject to unprojected wgs84 lat-lon
 bathy_rast <- raster::projectRaster(bathy_rast, 
                                     crs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
@@ -49,11 +49,11 @@ plot(bathy_rast)
 # coast_rast <- raster::mask(bathy_rast, coast)
 # plot(coast_rast)
 
-for(i in 1:length(bathy_rast@data@values)){
-  if(!is.na(bathy_rast@data@values[i]) & !is.na(coast_rast@data@values[i])){
-    bathy_rast@data@values[i] <- NA
-  }
-}
+# for(i in 1:length(bathy_rast@data@values)){
+#   if(!is.na(bathy_rast@data@values[i]) & !is.na(coast_rast@data@values[i])){
+#     bathy_rast@data@values[i] <- NA
+#   }
+# }
 bathy_rast@data@values[bathy_rast@data@values > 0] <- NA
 plot(bathy_rast)
 summary(bathy_rast@data@values)
@@ -72,10 +72,13 @@ stations.sp$bathy <- round(stations.sp$bathy, 1)
 # Reconvert to data frame
 stations <- as.data.frame(stations.sp)
 stations$coords.x1 <- NULL; stations$coords.x2 <- NULL
+
+# Feet to meters
+stations$depth <- stations$depth / 3.28084
   
 # Comparisons
 # Set sequence of years to plot
-yearstoplot <- seq(1993, 2021)
+yearstoplot <- seq(2002, 2022)
 
 # Plot comparisons, check for adhesion to 1:1 line
 for(i in 1:length(yearstoplot)){

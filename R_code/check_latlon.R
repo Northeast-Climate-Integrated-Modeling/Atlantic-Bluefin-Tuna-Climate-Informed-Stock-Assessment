@@ -67,9 +67,20 @@ colnames(speccode) <- c('prim2', 'secondary')
 target_bft <- merge(target_bft, speccode, by=c('prim2'), all=T)
 target_bft <- dplyr::select(target_bft, -prim1, -prim2)
 
+# Add dataframe with corrected latlon
+latlon <- read.csv(here('Data/Clean/LPS_compiled_0222_bfttargeted_allsizes.csv'))
+latlon <- latlon[latlon$id %in% target_bft$id,]
+latlon <- unique(latlon)
+latlon <- latlon[!is.na(latlon$latddmm) & !is.na(latlon$londdmm),]
+latlon <- dplyr::select(latlon, id, londdmm, latddmm)
+
+# Merge
+target_bft <- dplyr::select(target_bft, -londdmm, -latddmm)
+target_bft <- left_join(target_bft, latlon, by=c('id'))
+
 # Remove observations without spatial data
-target_bft <- subset(target_bft, londdmm < 9000)
-target_bft <- subset(target_bft, latddmm < 9000)
+target_bft <- subset(target_bft, !is.na(latddmm))
+target_bft <- subset(target_bft, !is.na(londdmm))
 
 # Calculate lat-lon
 # This is reported in DDMM, so must be converted
@@ -99,66 +110,21 @@ ggplot(coast) +
   coord_sf(xlim=c(st_bbox(bft_sf)[1], st_bbox(bft_sf)[3]),
            ylim=c(st_bbox(bft_sf)[2], st_bbox(bft_sf)[4]))
 
-# Some of these have accidentally flipped lat-lon
-flipped1 <- target_bft[round(as.numeric(substr(target_bft$latddmm,
-                                              start=1, stop=2)))
-                      > 45,]
-flipped <- flipped1[flipped1$lon > -45,]
-flipped$klon <- flipped$lat * -1
-flipped$klat <- flipped$lon * -1
-flipped <- flipped %>% 
-  dplyr::select(-lon, -lat) %>% 
-  rename(lat = klat) %>% 
-  rename(lon = klon)
-target_bft <- target_bft[target_bft$id %notin% flipped1$id,]
-target_bft <- rbind(target_bft, flipped)
-
-# Plot again
-bft_sf <- st_as_sf(target_bft, coords=c('lon', 'lat'), crs='EPSG:4326')
-ggplot(coast) +
-  geom_sf(fill='darkgray') +
-  geom_sf(data=bft_sf, cex=0.5) +
-  coord_sf(xlim=c(st_bbox(bft_sf)[1], st_bbox(bft_sf)[3]),
-           ylim=c(st_bbox(bft_sf)[2], st_bbox(bft_sf)[4]))
-
-# There's a few observations that are way out there in Canadian waters??
-# Pull out observations not in area of interest
-full_data <- target_bft
-target_bft <- subset(target_bft, target_bft$lat > 35 & target_bft$lat < 48)
-target_bft <- subset(target_bft, target_bft$lon >(-79) & target_bft$lon < (-65))
-bft_sf <- bft_sf[bft_sf$id %in% target_bft$id,]
-# Plot just to see
-ggplot(coast) +
-  geom_sf(fill='darkgray') +
-  geom_sf(data=bft_sf, cex=0.5) +
-  coord_sf(xlim=c(st_bbox(bft_sf)[1], st_bbox(bft_sf)[3]),
-           ylim=c(st_bbox(bft_sf)[2], st_bbox(bft_sf)[4]))
 
 # Still some clearly incorrect values.
 # Pull out observations on land
-onland <- st_intersection(bft_sf, coast)
-onland.df <- target_bft[target_bft$id %in% onland$id,]
-# Put these to the side to check them out
-maybekeep <- target_bft[target_bft$id %in% onland.df$id,]
-maybekeep <- st_as_sf(maybekeep, coords=c('lon', 'lat'), crs='EPSG:4326')
+nwat <- st_read(here('Data/GIS/Combined_Bluefin2.shp'), quiet=T)
+nwat <- st_transform(nwat, crs="EPSG:4326")
+good <- st_intersection(bft_sf, nwat)
 # Remove
-target_bft <- target_bft[target_bft$id %notin% onland$id,]
-bft_sf <- bft_sf[bft_sf$id %notin% onland$id,]
+target_bft <- target_bft[target_bft$id %in% good$id,]
+bft_sf <- bft_sf[bft_sf$id %in% good$id,]
 # Plot just to see
 ggplot(coast) +
   geom_sf(fill='darkgray') +
   geom_sf(data=bft_sf, cex=0.5) +
-  geom_sf(data=maybekeep, col='red', cex=0.5) +
   coord_sf(xlim=c(-77, -67),
            ylim=c(36, 46))
-# Plot just to see
-ggplot(coast) +
-  geom_sf(fill='darkgray') +
-  geom_sf(data=maybekeep, cex=0.5,
-          aes(col=state)) +
-  coord_sf(xlim=c(st_bbox(maybekeep)[1], st_bbox(maybekeep)[3]),
-           ylim=c(st_bbox(maybekeep)[2], st_bbox(maybekeep)[4]))
-# Right. I cannot keep these.
 
 # Shift back to df
 target_bft <- sfheaders::sf_to_df(bft_sf, fill=T)
@@ -222,7 +188,7 @@ summary(target_bft)
 ## AS OF JANUARY 2024, STOP HERE. YOU DO NOT HAVE TO COMPLETE CLEANING 
 ## 1993-2001.
 write.csv(target_bft,
-          here('Data/Clean/LPS_LargeTarget_Clean_2024.csv'),
+          here('Data/Clean/LPS_LargeTarget_Clean_2024_2.csv'),
           row.names = F)
 
 # Are there obsevations in the prepared data that don't match my data

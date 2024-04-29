@@ -34,7 +34,7 @@ prey <- preyorig %>%
   drop_na(Lon) %>% 
   drop_na(Lat) %>% 
   filter(MONTH %in% c(6,7,8,9,10)) %>% 
-  filter(YEAR > 1992 & YEAR < 2022)
+  filter(YEAR >= 2002 & YEAR <= 2022)
 
 # Convert lbs to kgs
 prey$wt_kgs <- prey$wt_lbs * 0.45359237
@@ -128,7 +128,7 @@ prey <- preyorig %>%
   drop_na(Lon) %>% 
   drop_na(Lat) %>% 
   filter(MONTH %in% c(6,7,8,9,10)) %>% 
-  filter(YEAR > 1992 & YEAR < 2022)
+  filter(YEAR >= 2002 & YEAR <= 2022)
 
 # Convert lbs to kgs
 prey$wt_kgs <- prey$wt_lbs * 0.45359237
@@ -187,39 +187,48 @@ st_crs(prey.sf) <- 'EPSG:4326'
 rm(prey)
 
 # Cut to tuna polygon
-nwat <- st_read(here('Data/GIS/NWAtlantic.shp'))
+nwat <- st_read(here('Data/GIS/New_Extents2/US_120km_Buffer.shp'))
 nwat <- st_transform(nwat, st_crs(prey.sf))
+nwat <- st_make_valid(nwat)
 prey.sf <- st_intersection(prey.sf, nwat)
 
 # Remove locations on land
 coast <- ecodata::coast
 coast <- st_transform(coast, st_crs(prey.sf))
-onland <- st_intersection(prey.sf, coast)
-prey.sf <- prey.sf[prey.sf$row %notin% onland$row,]
-prey.sf$row <- NULL
+# onland <- st_intersection(prey.sf, coast)
+# prey.sf <- prey.sf[prey.sf$row %notin% onland$row,]
+# prey.sf$row <- NULL
 
 # Plot to see locations
 # Add tuna data
-dat <- read.csv(here('Data/Clean/BFT_US_catch_VASTdata.csv'))
+dat <- read.csv(here('Data/Clean/BFT_BothCountries_BothSizes_VAST.csv'))
+dat <- dat[dat$location == 'us',]
+dat <- dat[dat$Size == 'Large',]
 dat.sf <- st_as_sf(dat, coords=c('lon', 'lat'))
 st_crs(dat.sf) <- "EPSG:4326"
+dat.sf <- st_intersection(dat.sf, nwat)
+
 
 ggplot() +
   geom_sf(data=coast, fill='gray')+
+  geom_sf(data=nwat, fill='lightgreen') +
   geom_sf(data=prey.sf, aes(col=YEAR)) +
-  geom_sf(data=dat.sf, col='red', pch=19, cex=0.25) +
-  coord_sf(xlim=c(-79, -66),
-           ylim=c(35, 45))
+  #geom_sf(data=dat.sf, col='red', pch=19, cex=0.25) +
+  coord_sf(xlim=c(-76, -68),
+           ylim=c(38, 45))
 
 # Solid coverage. Slightly less in the south. Not sure what else to add.
 # Convert back to df
 prey <- sfheaders::sf_to_df(prey.sf, fill=T)
 colnames(prey) <- tolower(colnames(prey))
-prey <- dplyr::select(prey, -fid, -sfg_id, -point_id)
-
-colnames(prey) <- c(colnames(prey)[1:8], 'lon', 'lat')
+colnames(prey)[8] <- 'ID'
+prey <- prey %>% 
+  dplyr::select(ID, tripid, haulnum, year, month, obgearcat, comname, wt_kgs,
+                strata, x, y) %>% 
+  rename(lat= y) %>% 
+  rename(lon=x)
 
 head(prey)
 
 # Save
-write.csv(prey, row.names = F, here('Data/Prey_Data/Clean_prey_data.csv'))
+write.csv(prey, row.names = F, here('Data/Prey_Data/Clean_prey_data_0222.csv'))

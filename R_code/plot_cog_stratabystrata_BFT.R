@@ -12,6 +12,12 @@ library(ggpubr)
 library(ggnewscale)
 library(patchwork)
 
+# Load data
+load(here('VAST_runs/tuna10_usonly/tuna10_usonly.RDATA'))
+rm(list=setdiff(ls(), c("fit", "%notin%", "year.labs")))
+country.use <- 'US'
+setwd(here('VAST_runs/tuna10_usonly'))
+
 # Load functions
 # Negate function
 '%notin%' <- function(x,y)!('%in%'(x,y))
@@ -30,10 +36,6 @@ theme_set(theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
                 plot.title=element_text(size=14, hjust = 0, vjust = 1.2),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
-# Load data
-load(here('VAST_runs/tuna8/tuna_8.RDATA'))
-rm(list=setdiff(ls(), c("fit", "%notin%", "year.labs")))
-
 # Create objects needed to plot
 Sdreport = fit$parameter_estimates$SD
 SD = TMB::summary.sdreport(Sdreport)
@@ -43,9 +45,6 @@ Report = fit$Report
 # Name where data are stored in report
 CogName = "mean_Z_ctm"
 EffectiveName = "effective_area_ctl"
-
-# Set labels
-category_names = c('Small', 'Large')
 
 ###############################################################################
 ####                     Seasonal Center of gravity                        ####
@@ -63,34 +62,20 @@ SD_mean_Z_ctm = array(NA, dim = c(unlist(TmbData[c("n_c",
 SD_mean_Z_ctm[] = SD[which(rownames(SD) == CogName), 
                            c("Estimate", "Std. Error")]
 # Name dimensions      
-names(dim(SD_mean_Z_ctm)) <- c('Category', 
+names(dim(SD_mean_Z_ctm)) <- c('Category',
                                'Time', 
                                'Location', 
                                #'Strata',
                                'Est.Err')
 # Separate sizes      
-SD_mean_Z_ctm_small <- SD_mean_Z_ctm[1,,,]
-SD_mean_Z_ctm_large <- SD_mean_Z_ctm[2,,,]
+SD_mean_Z_ctm_bft <- SD_mean_Z_ctm[1,,,]
 
 # Concatenate sizes to list, name
-size.list.cog <- list(SD_mean_Z_ctm_small,
-                      SD_mean_Z_ctm_large)
-names(size.list.cog) <- c('Small', 'Large')  
-rm(SD_mean_Z_ctm, SD_mean_Z_ctm_large,
-   SD_mean_Z_ctm_small)
+size.list.cog <- list(SD_mean_Z_ctm_bft)
 
-# for(i in 1:length(size.list.cog)){
-#   size.list.cog[[i]] <- list(
-#     size.list.cog[[i]][,,1,],
-#     size.list.cog[[i]][,,2,],
-#     size.list.cog[[i]][,,3,],
-#     size.list.cog[[i]][,,4,],
-#     size.list.cog[[i]][,,5,]
-#   )
-#   names(size.list.cog[[i]]) <- c(
-#     'SNE', 'SNE', 'SNE', 'SNE', 'ALL'
-#   )
-# }
+names(size.list.cog) <- c('BFT')
+rm(SD_mean_Z_ctm,
+   SD_mean_Z_ctm_bft)
 
 ###############################################################################
 ####                   Seasonal Effective area occupied                    ####
@@ -117,27 +102,13 @@ names(dim(SD_effective_area_ctl)) <- c('Category',
                                        'Strata', 
                                        'Est.Err')
 # Separate sizes      
-SD_effective_area_ctl_small <- SD_effective_area_ctl[1,,1,]
-SD_effective_area_ctl_large <- SD_effective_area_ctl[2,,1,]
-# Concatenate sizes to list, name
-size.list.eao <- list(SD_effective_area_ctl_small,
-                      SD_effective_area_ctl_large)
-names(size.list.eao) <- c('Small', 'Large')       
-rm(SD_effective_area_ctl, SD_effective_area_ctl_large, 
-   SD_effective_area_ctl_small)
+SD_effective_area_ctl_bft <- SD_effective_area_ctl[1,,,]
 
-# for(i in 1:length(size.list.eao)){
-#   size.list.eao[[i]] <- list(
-#     size.list.eao[[i]][,1,],
-#     size.list.eao[[i]][,2,],
-#     size.list.eao[[i]][,3,],
-#     size.list.eao[[i]][,4,],
-#     size.list.eao[[i]][,5,]
-#   )
-#   names(size.list.eao[[i]]) <- c(
-#     'SNE', 'SNE', 'SNE', 'SNE', 'ALL'
-#   )
-# }
+# Concatenate sizes to list, name
+size.list.eao <- list(SD_effective_area_ctl_bft)
+names(size.list.eao) <- c('BFT')    
+rm(SD_effective_area_ctl,
+   SD_effective_area_ctl_bft)
 
 rm(SD, Sdreport, TmbData, CogName, EffectiveName, SD_log_effective_area_ctl)
 
@@ -159,13 +130,6 @@ stocks <- rbind(us, can)
 stocks <- st_transform(stocks, st_crs(coast))
 stocks <- st_make_valid(stocks)
 new_bb <- st_bbox(stocks)
-
-ggplot() +
-  geom_sf(data=coast, fill='gray')+
-  geom_sf(data=stocks, aes(fill=STOCK)) +
-  coord_sf(xlim=c(-78, -55),
-           ylim=c(35, 48))
-
 
 # Loop through sizes, split into seasons
 for(i in 1:length(size.list.cog)){ # Number of sizes
@@ -249,7 +213,7 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
     t.spring <- st_multilinestring(do.call("rbind", linestrings))
     t.spring <-  nngeo::st_segments(t.spring)
     t.spring <- st_sf(t.spring)
-    t.spring$Year <- seq(1993, 2019, 1)
+    t.spring$Year <- seq(2003, 2022, 1)
     st_crs(t.spring) <- "EPSG:32619"
     
     SD_plotting.spring <- st_transform(SD_plotting.spring, st_crs(coast))
@@ -263,145 +227,21 @@ for(i in 1:length(size.list.cog)){ # Number of sizes
       new_scale_color() +
       geom_sf(data=SD_plotting.spring, aes(col=Year), pch=19, cex=0.5) +
       scale_color_continuous(
-        limits = c(1993,2021), 
-        breaks = c(1993, 2000, 2010, 2021),
-        labels = c('1982', ' ', ' ',  '2021'),
+        limits = c(2003,2022), 
+        breaks = c(2003, 2009, 2015, 2022),
+        labels = c('2003', ' ', ' ',  '2022'),
         guide = guide_colourbar(nbin = 100, draw.ulim = FALSE, draw.llim = FALSE)
       )+
       geom_sf(data=t.spring, aes(col=Year)) +
-      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == 'Canada',])[1], 
-                      st_bbox(stocks[stocks$STOCK == 'Canada',])[3]),
-               ylim=c(st_bbox(stocks[stocks$STOCK == 'Canada',])[2], 
-                      st_bbox(stocks[stocks$STOCK == 'Canada',])[4])) +
+      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == paste0(country.use),])[1], 
+                      st_bbox(stocks[stocks$STOCK == paste0(country.use),])[3]),
+               ylim=c(st_bbox(stocks[stocks$STOCK == paste0(country.use),])[2], 
+                      st_bbox(stocks[stocks$STOCK == paste0(country.use),])[4])) +
       xlab("Longitude") + ylab("Latitude")
     
     spring <- ggarrange(spring.vis, spring.lines, ncol=2) + bgcolor("white") 
     
     ggsave(spring,
-           filename=paste0(here(), "/Plot_output_3/location.info.",
-                           category_names[i], ".spring.Canada.png"),
-           width = 10, height = 8, units='in')
-}
-
-###############################################################################
-####                            Visualize COG                              ####
-###############################################################################
-# Load spatial information
-coast <- ecodata::coast
-coast <- st_transform(coast, "EPSG:32619")
-stocks <- st_read(here('Data/GIS/codstox.shp'))
-stocks <- st_transform(stocks, "EPSG:32619")
-new_bb <- st_bbox(stocks)
-
-for(i in 1:length(size.list.cog)){ # Categories
-    # COG
-    SD_plotting.cog <- size.list.cog[[i]]
-    SD_plotting.cog <- as.data.frame(SD_plotting.cog[,,])
-    colnames(SD_plotting.cog) <- c('easting', 'northing', 'e.sd', 'n.sd')
-    SD_plotting.cog$YearSeas <- year.labs
-    SD_plotting.cog$easting <- SD_plotting.cog$easting * 1000
-    SD_plotting.cog$northing <- SD_plotting.cog$northing * 1000
-    SD_plotting.cog <- separate(SD_plotting.cog, YearSeas, 
-                                into = c("Year", "Season"), sep = " (?=[^ ]+$)")
-    SD_plotting.cog$Year <- as.numeric(SD_plotting.cog$Year)
-    
-    # Convert to sf for plotting
-    SD_plotting <- st_as_sf(SD_plotting.cog, coords=c("easting", "northing"))
-    st_crs(SD_plotting) <- "EPSG:32619"
-    
-    # Spring
-    SD_plotting.spring <- subset(SD_plotting, Season =='Spring')
-    points <- st_cast(st_geometry(SD_plotting.spring), "POINT") 
-    # Number of total linestrings to be created
-    n <- length(points) - 1
-    # Build linestrings
-    linestrings <- lapply(X = 1:n, FUN = function(x) {
-      
-      pair <- st_combine(c(points[x], points[x + 1]))
-      line <- st_cast(pair, "LINESTRING")
-      return(line)
-    })
-    # Split to individual linestrings, associate year
-    t.spring <- st_multilinestring(do.call("rbind", linestrings))
-    t.spring <-  nngeo::st_segments(t.spring)
-    t.spring <- st_sf(t.spring)
-    t.spring$Year <- seq(1982, 2020, 1)
-    st_crs(t.spring) <- "EPSG:32619"
-    # Plot
-    spring <- ggplot() +
-      geom_sf(data=coast, fill='gray') +
-      geom_sf(data=stocks, aes(col=STOCK), fill='transparent', lwd=0.25) +
-      guides(col=guide_legend(title="Stock", nrow=2,byrow=TRUE)) +
-      new_scale_color() +
-      geom_sf(data=SD_plotting.spring, aes(col=Year), pch=19, cex=0.5) +
-      scale_color_continuous(
-        limits = c(1982,2021), 
-        breaks = c(1982,1990, 2000, 2010, 2021),
-        labels = c('1982', ' ', ' ', ' ', '2021'),
-        guide = guide_colourbar(nbin = 100, draw.ulim = FALSE, draw.llim = FALSE)
-      )+
-      geom_sf(data=t.spring, aes(col=Year)) +
-      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == 'US',])[1], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[3]),
-               ylim=c(st_bbox(stocks[stocks$STOCK == 'US',])[2], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[4])) +
-      xlab("Longitude") + ylab("Latitude") +
-      ggtitle('Spring')
-    
-    # Fall
-    SD_plotting.fall <- subset(SD_plotting, Season =='Fall')
-    points <- st_cast(st_geometry(SD_plotting.fall), "POINT") 
-    # Number of total linestrings to be created
-    n <- length(points) - 1
-    # Build linestrings
-    linestrings <- lapply(X = 1:n, FUN = function(x) {
-      
-      pair <- st_combine(c(points[x], points[x + 1]))
-      line <- st_cast(pair, "LINESTRING")
-      return(line)
-      
-    })
-    # Split to individual linestrings, associate year
-    t.fall <- st_multilinestring(do.call("rbind", linestrings))
-    t.fall <-  nngeo::st_segments(t.fall)
-    t.fall <- st_sf(t.fall)
-    t.fall$Year <- seq(1982, 2020, 1)
-    st_crs(t.fall) <- "EPSG:32619"
-    # Plot
-    fall <- ggplot() +
-      geom_sf(data=coast, fill='gray') +
-      geom_sf(data=stocks, aes(col=STOCK), fill='transparent', lwd=0.25) +
-      guides(col=guide_legend(title="Stock", nrow=2,byrow=TRUE)) +
-      new_scale_color() +
-      geom_sf(data=SD_plotting.fall, aes(col=Year), pch=19, cex=0.5) +
-      scale_color_continuous(
-        limits = c(1982,2021), 
-        breaks = c(1982,1990, 2000, 2010, 2021),
-        labels = c('1982', ' ', ' ', ' ', '2021'),
-        guide = guide_colourbar(nbin = 100, draw.ulim = FALSE, draw.llim = FALSE)
-      )+
-      geom_sf(data=t.fall, aes(col=Year)) +
-      coord_sf(xlim=c(st_bbox(stocks[stocks$STOCK == 'US',])[1], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[3]),
-               ylim=c(st_bbox(stocks[stocks$STOCK == 'US',])[2], 
-                      st_bbox(stocks[stocks$STOCK == 'US',])[4])) +
-      xlab("Longitude") + ylab("Latitude") +
-      ggtitle('Fall')
-    
-    
-    combined <- spring + fall & 
-      theme(legend.position = "bottom") 
-    combined <- combined + plot_layout(guides = "collect") +
-    plot_annotation(
-      title = paste0(category_names[i],
-                               " size class"),
-      theme = theme(plot.title = element_text(size = 14,
-                                              face = 'bold',
-                                              hjust=0.5,
-                                              vjust=-0.5)))
-    # Save
-    ggsave(combined,
-           filename=paste0(here(), "/Plot_Output_2/cog.vis.",
-                           category_names[i], '.US.png'),
+           filename=paste0(here(), "COG.png"),
            width = 10, height = 8, units='in')
 }

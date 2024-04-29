@@ -29,10 +29,10 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load US data
-us <- read.csv(here('Data/Clean/LPS_LargeTarget_Clean_2024.csv'))
+us <- read.csv(here('Data/Clean/LPS_LargeTarget_Clean_2024_2.csv'))
 
 # Load Canada data
-can <- read.csv(here('Data/Canada_Clean/compiled_clean_canada.csv'))
+can <- read.csv(here('Data/Canada_Clean/compiled_clean_canada_2.csv'))
 can$date <- as.Date(paste(can$Year, can$Jday, sep="-"),"%Y-%j")
 can$date <- as.POSIXct(can$date)
 can <- can[can$Year >=2002,]
@@ -92,21 +92,21 @@ us <- dplyr::select(us, -yrmo, -date)
 can$fhours <- can$Effort * 24
 
 can <- can %>% 
-  dplyr::select(Weight_Class, Trip_ID, Vessel_ID, spacetime,
-                Year, Month, day, Jday, fhours, longitude, latitude,
-                COUNT_for_size, SST, nao, amo, Gear)
+  dplyr::select(weight_class, mon_doc_id, vr_number, spacetime,
+                Year, Month, Day, Jday, Fixed_f, lon, lat,
+                COUNT_for_size, nao, amo, gear)
 can <- can %>% 
-  rename(Size_class = Weight_Class) %>% 
-  mutate(id = paste0(Trip_ID, "_",Vessel_ID, "_", spacetime)) %>% 
-  rename(lon = longitude) %>% 
-  rename(lat = latitude)
+  rename(Size_class = weight_class) %>% 
+  mutate(id = paste0(mon_doc_id, "_",vr_number, "_", spacetime)) %>% 
+  rename(Gear = gear) %>% 
+  rename(fhours = Fixed_f) %>% 
+  filter(Size_class == 'Large')
 
 can <- can %>% 
-  dplyr::select(-Trip_ID, -Vessel_ID, -spacetime, -Jday) %>% 
+  dplyr::select(-mon_doc_id, -vr_number, -spacetime, -Jday) %>% 
   rename(year = Year) %>% 
   rename(month = Month) %>% 
-  rename(catch = COUNT_for_size) %>% 
-  rename(sst = SST)
+  rename(catch = COUNT_for_size)
 
 us <- us %>% 
   dplyr::select(-depth)
@@ -132,11 +132,17 @@ us <- dplyr::select(us, -prim_op, -lines, -party, -bt_art, -bt_live, -bt_dead,
 us <- us %>% 
   rename(catch = catch_n)
 
+can <- can %>% 
+  rename(day = Day) %>% 
+  mutate(bathy=NA,
+         field.sst=NA,
+         oisst=NA)
+
 both <- rbind(can, us)
 
 both <- dplyr::select(both,
                       id, location, year, month, day, lon, lat,
-                      fhours, Gear, catch, sst, nao, amo)
+                      fhours, Gear, catch, nao, amo)
 both <- both[with(both, order(location, year, month, id)),]
 rownames(both) <- NULL
 
@@ -210,7 +216,7 @@ finaldf <- finaldf[finaldf$catch <=12,]
 summary(finaldf)
 
 write.csv(finaldf, 
-          here('Data/Clean/BFT_BothCountries_VAST3.csv'),
+          here('Data/Clean/BFT_BothCountries_Large_VAST_5.csv'),
           row.names = F)
 
 rm(list=setdiff(ls(), "finaldf"))
