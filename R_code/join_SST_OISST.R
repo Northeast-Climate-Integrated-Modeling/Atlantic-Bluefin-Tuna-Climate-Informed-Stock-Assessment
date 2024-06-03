@@ -34,14 +34,15 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 #list of SST dataframes
 SSTdfs <- list.files(here("Data/OISST/"), pattern = "*.rds")
 # Keep only 2002-2022
-SSTdfs <- SSTdfs[10:30]
+SSTdfs <- SSTdfs[31]
 
 # Create empty tibble to fill
 stn_OISST <- tibble()
 
 # Load station data
 # Load data
-stations <- read.csv(here('Data/Clean/BFT_BothCountries_Large_VAST_5.csv'))
+stations <- read.csv(here('Data/Clean/LPS_LargeTarget_Clean_2024_3.csv'))
+stations <- stations[stations$year == 2023,]
 # Confirm all have dats
 stations[is.na(stations$year),]
 stations[is.na(stations$month),]
@@ -61,10 +62,10 @@ stations$yrmody <- paste0(stations$year,
                           str_pad(stations$month, 2, "left", '0'), 
                           str_pad(stations$day, 2, "left", '0'))
 
-stations <- stations %>% 
-  rename(sst = oisst)
+stations <- stations %>%
+  rename(field.sst = sst)
 
-stations <- stations[is.na(stations$sst),]
+#stations <- stations[is.na(stations$sst),]
 # stations <- dplyr::select(stations,
 #                           -year, -month, -day, -sst, -yrmody)
 
@@ -117,11 +118,11 @@ for(df in SSTdfs){
   )))
   
   yrdietOISST <- yrdietOISST %>% 
-    dplyr::select(-year.x, -month.x, -day.x, -sst.x, -yrmody.x) %>% 
+    dplyr::select(-year.x, -month.x, -day.x, -yrmody.x) %>% 
     rename(year=year.y) %>% 
     rename(month=month.y) %>% 
     rename(day=day.y) %>% 
-    rename(sst=sst.y) %>% 
+    rename(oisst=sst) %>% 
     rename(yrmody=yrmody.y)
   
   # Bind one year of the loop to the initialized tibble
@@ -138,12 +139,7 @@ stn_OISST <- stn_OISST %>%
   dplyr::select(-yrmody, -declat, -declon, -sfg_id,
                 -point_id, -DATE) %>% 
   rename(lon=x) %>% 
-  rename(lat=y) %>%
-  rename(sst=oisst)
-
-stations <- read.csv(here('Data/Clean/BFT_BothCountries_Large_VAST_5.csv'))
-stations <- stations[!is.na(stations$oisst),]
-stations <- rbind(stations, stn_OISST)
+  rename(lat=y)
 
 # Save output
 #saveRDS(stn_OISST, here("data/RData_Storage/stn_OISST.rds"))
@@ -170,11 +166,11 @@ agg_stn_all_OISST <- left_join(stations, stn_OISST_merge)
 # Create dataset of comparisons
 comparesst <- agg_stn_all_OISST %>%
   #dplyr::filter(YEAR>1981)%>%
-  dplyr::select(sst, oisst, year) %>%
+  dplyr::select(field.sst, oisst, year) %>%
   na.omit()
 
 # Set sequence of years to plot
-yearstoplot <- seq(2002, 2022)
+yearstoplot <- 2023
 
 # Plot comparisons, check for adhesion to 1:1 line
 for(i in 1:length(yearstoplot)){
@@ -182,9 +178,10 @@ for(i in 1:length(yearstoplot)){
   plotyr <- yearstoplot[i]
   
   # Plot OISST vs Field SST for that year
-  print(ggplot2::ggplot(comparesst[comparesst$year == plotyr,], 
-                        aes(x=sst, y=oisst)) +
-    geom_point(alpha=0.8, pch=16)+
+  print(ggplot2::ggplot() +
+    geom_point(data=comparesst[comparesst$year == plotyr,],
+               aes(x=field.sst, y=oisst),
+               alpha=0.8, pch=16)+
     geom_abline(intercept = 0, slope = 1) +
     labs(x = "Field surface temperature (deg C)",
          y = "OISST (deg C)") +
@@ -193,7 +190,7 @@ for(i in 1:length(yearstoplot)){
 }
 
 # Plot OISST vs Field SST for all years
-ggplot2::ggplot(comparesst, aes(x=sst, y=oisst, col=year)) +
+ggplot2::ggplot(comparesst, aes(x=field.sst, y=oisst, col=year)) +
   geom_point(alpha=0.8, pch=16)+
   geom_abline(intercept = 0, slope = 1) +
   labs(x = "Field surface temperature (deg C)",
@@ -206,10 +203,12 @@ ggplot2::ggplot(comparesst, aes(x=sst, y=oisst, col=year)) +
 mapsst <- agg_stn_all_OISST %>%
   #dplyr::filter(YEAR>1981) %>%
   #dplyr::filter(SEASON == 'FALL' | SEASON=='SPRING') %>% 
-  dplyr::mutate(sstdiff = sst-oisst) %>%
-  dplyr::select(trip, year, month, sst, oisst, sstdiff) 
+  dplyr::mutate(sstdiff = field.sst-oisst) %>%
+  dplyr::select(id, year, month, field.sst, oisst, sstdiff,
+                lon, lat) 
 
 # Set CRS
+mapsst <- st_as_sf(mapsst, coords=c('lon', 'lat'))
 st_crs(mapsst) <- "EPSG:4326"
 
 # Set function to map SST difference
@@ -234,13 +233,13 @@ yrmap <- function(mapyr){
 }
 
 # Plot SST difference in space for every year
-for(mapyr in 1992:2020){
+for(mapyr in 2023){
   print(yrmap(mapyr)) 
 }
 
 # Executive decision: if field SST is within 2 deg of OISST, use field SST value
 # If field SST is more than 2 deg different from OISST, use OISST
-agg_stn_all_OISST$sstdiff <- agg_stn_all_OISST$sst - agg_stn_all_OISST$oisst
+agg_stn_all_OISST$sstdiff <- agg_stn_all_OISST$field.sst - agg_stn_all_OISST$oisst
 summary(agg_stn_all_OISST$sstdiff)
 hist(agg_stn_all_OISST$sstdiff, breaks=seq(-14, 14, 1))
 nrow(agg_stn_all_OISST[!is.na(agg_stn_all_OISST$sstdiff) & abs(agg_stn_all_OISST$sstdiff) <=2.0,]) / 
@@ -255,7 +254,7 @@ agg_stn_all_OISST$sstsource <- NA
 # Retain source information
 for(i in 1:nrow(agg_stn_all_OISST)){
   if(!is.na(agg_stn_all_OISST$sstdiff[i]) & abs(agg_stn_all_OISST$sstdiff[i]) <=2){
-    agg_stn_all_OISST$temp[i] <- agg_stn_all_OISST$sst[i]
+    agg_stn_all_OISST$temp[i] <- agg_stn_all_OISST$field.sst[i]
     agg_stn_all_OISST$sstsource[i] <- 'Field'
   }
   if(is.na(agg_stn_all_OISST$sstdiff[i]) | abs(agg_stn_all_OISST$sstdiff[i]) >2){
@@ -279,4 +278,4 @@ colnames(agg_stn_all_OISST) <- c('id', 'year', 'month', 'day', 'lon', 'lat',
 
 # Save output
 write.csv(agg_stn_all_OISST, row.names = F, 
-          here('Data/Clean/AllYears_Canada_UpdatedSST.csv'))
+          here('Data/Clean/LPS_2023_updated_SST_Depth.csv'))

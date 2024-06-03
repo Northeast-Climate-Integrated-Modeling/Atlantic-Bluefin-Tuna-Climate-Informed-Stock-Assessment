@@ -25,7 +25,7 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load prey data
-preyorig <- read.csv(here('Data/Prey_Data/bft_preyV2.csv'))
+preyorig <- read.csv(here('Data/Prey_Data/bft_preyV3.csv'))
 head(preyorig)
 preyorig$X <- NULL
 
@@ -34,7 +34,7 @@ prey <- preyorig %>%
   drop_na(Lon) %>% 
   drop_na(Lat) %>% 
   filter(MONTH %in% c(6,7,8,9,10)) %>% 
-  filter(YEAR >= 2002 & YEAR <= 2022) %>% 
+  filter(YEAR == 2023) %>% 
   filter(COMNAME != 'HERRING, BLUEBACK')
 
 # Convert to fish groups (herring, menhaden, mackerels)
@@ -71,7 +71,9 @@ prey <- dplyr::select(prey, -wt_lbs, -CATDISP)
 
 # Add padding 0s where needed
 prey$MONTH   <- str_pad(prey$MONTH, 2, "left", "0")
-prey$HAULNUM <- str_pad(prey$HAULNUM, 3, "left", "0")
+prey$TRIPID <- paste0(prey$YEAR, prey$MONTH, prey$Lat, prey$Lon, prey$gear)
+prey$TRIPID <- as.numeric(as.factor(prey$TRIPID))
+prey$HAULNUM <- 1
 
 # Order
 prey <- prey[with(prey, order(YEAR, MONTH, TRIPID, HAULNUM, fish)),]
@@ -195,5 +197,5 @@ colnames(prey) <- tolower(colnames(prey))
 
 # Save
 write.csv(prey,
-          here('Data/Prey_Data/species_sep_prey.csv'),
+          here('Data/Prey_Data/species_sep_prey_2023.csv'),
           row.names = F)

@@ -23,62 +23,38 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
 '%notin%' <- function(x,y)!('%in%'(x,y))
 
 # Root
-root <- here('VAST_runs/medium/AIC/')
-ending <- '_medcod_wholearea_natsplin_fsOFF.RData'
+root <- here('VAST_runs/tuna13_usonly/natural_splines')
+ending <- '_naturalsplines_x1_covsnotscaled_finescaleoff_knots5.RData'
 
-load(paste0(root, '/amo/noamo', ending))
+load(paste0(root, '/No AMO DF5 Not Scaled Coarse/noamo', ending))
 amo <- fit
 
-load(paste0(root, '/bathy/nobathy', ending))
+load(paste0(root, '/No Bathy DF5 Not Scaled Coarse/nobathy', ending))
 bathy <- fit
 
-load(paste0(root, '/bottomtemp/nobottomtemp', ending))
-bottomtemp <- fit
+load(paste0(root, '/No Prey DF5 Not Scaled Coarse/noprey', ending))
+prey <- fit
 
-load(paste0(root, '/cobble/nocobble', ending))
-cobble <- fit
+load(paste0(root, '/No SST DF5 Not Scaled Coarse/nosst', ending))
+sst <- fit
 
-load(paste0(root, '/gravel/nogravel', ending))
-gravel <- fit
-
-load(paste0(root, '/mud/nomud', ending))
-mud <- fit
-
-load(paste0(root, '/nao/nonao', ending))
-nao <- fit
-
-load(paste0(root, '/rugos/norugos', ending))
-rugos <- fit
-
-load(paste0(root, '/sand/nosand', ending))
-sand <- fit
-
-load(paste0(root, '/none/nonecovs', ending))
+load(paste0(root, '/No Covs Coarse/nocovs', ending))
 nocovs <- fit
 
-load(paste0(root, '/all/allcovs', ending))
+load(paste0(root, '/All Covs DF5 Not Scaled Coarse/allcovs', ending))
 allcovs <- fit
 
 
-rm(list=setdiff(ls(), c('amo', 'bathy', 'bottomtemp',
-                        'cobble', 'gravel', 'mud',
-                        'nao', 'rugos', 'sand',
+rm(list=setdiff(ls(), c('amo', 'bathy', 'prey', 'sst',
                         'nocovs', 'allcovs')))
 
 aiccomp <- data.frame(
-  model=c('amo', 'bathy', 'bottomtemp',
-          'cobble', 'gravel', 'mud',
-          'nao', 'rugos', 'sand',
+  model=c('amo', 'bathy', 'prey', 'sst',
           'nocovs', 'allcovs'),
   aic = c(amo$parameter_estimates$AIC,
           bathy$parameter_estimates$AIC,
-          bottomtemp$parameter_estimates$AIC,
-          cobble$parameter_estimates$AIC,
-          gravel$parameter_estimates$AIC,
-          mud$parameter_estimates$AIC,
-          nao$parameter_estimates$AIC,
-          rugos$parameter_estimates$AIC,
-          sand$parameter_estimates$AIC,
+          prey$parameter_estimates$AIC,
+          sst$parameter_estimates$AIC,
           nocovs$parameter_estimates$AIC,
           allcovs$parameter_estimates$AIC)
 )
@@ -94,22 +70,15 @@ aiccomp$delta.aic[1] <- 0
 aiccomp
 
 devcomp <- data.frame(
-  model=c('amo', 'bathy', 'bottomtemp',
-          'cobble', 'gravel', 'mud',
-          'nao', 'rugos', 'sand',
-          'nocovs', 'allcovs', 'selectcovs'),
-  deviance = c(amo$Report$deviance,
+  model=c('amo', 'bathy', 'prey', 'sst',
+          'nocovs', 'allcovs'),
+  deviance = c(
+          amo$Report$deviance,
           bathy$Report$deviance,
-          bottomtemp$Report$deviance,
-          cobble$Report$deviance,
-          gravel$Report$deviance,
-          mud$Report$deviance,
-          nao$Report$deviance,
-          rugos$Report$deviance,
-          sand$Report$deviance,
+          prey$Report$deviance,
+          sst$Report$deviance,
           nocovs$Report$deviance,
-          allcovs$Report$deviance,
-          selectcovs$Report$deviance)
+          allcovs$Report$deviance)
 )
 
 devcomp <- devcomp[with(devcomp, order(deviance, decreasing = T)),]

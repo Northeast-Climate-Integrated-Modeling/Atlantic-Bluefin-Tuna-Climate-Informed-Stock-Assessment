@@ -41,12 +41,36 @@ dat <- dplyr::select(dat,
                      -tracker, -control, -docno, -intcode,
                      -cluster, -sitetype, -site_no, -measur, -given.spec)
 
+# Add 2023 data
+fl23 <- read.csv(here('Data/LPS/ALL/2023_US_Fishing_Clean.csv'))
+fl23 <- unique(fl23)
+fl23 <- dplyr::select(fl23, 
+                      colnames(dat)[colnames(dat) %in% colnames(fl23)])
+fl23$gear <- 1
+
+# Add dataframe with corrected latlon
+latlon <- read.csv(here('Data/Clean/LPS_compiled_0222_bfttargeted_allsizes.csv'))
+latlon <- latlon[latlon$id %in% dat$id,]
+latlon <- unique(latlon)
+latlon <- latlon[!is.na(latlon$latddmm) & !is.na(latlon$londdmm),]
+latlon <- dplyr::select(latlon, id, londdmm, latddmm)
+
+# Merge
+target_bft <- dplyr::select(dat, -londdmm, -latddmm)
+target_bft <- left_join(target_bft, latlon, by=c('id'))
+
+# Remove observations without spatial data
+target_bft <- subset(target_bft, !is.na(latddmm))
+target_bft <- subset(target_bft, !is.na(londdmm))
+
+target_bft <- rbind(dat, fl23)
+
 # FILTER -- 
 # June through October, 
 # private chartered or headboat, 
 # fished bt 1 and 24 hours
 # Targeted large-med or giants
-target_bft <- subset(dat,
+target_bft <- subset(target_bft,
                      month %in% c(6:10) &
                      prim_op %in% c(1,2,3) &
                      fhours > 0.99 &
@@ -66,21 +90,6 @@ target_bft <- merge(target_bft, speccode, by=c('prim1'), all=T)
 colnames(speccode) <- c('prim2', 'secondary')
 target_bft <- merge(target_bft, speccode, by=c('prim2'), all=T)
 target_bft <- dplyr::select(target_bft, -prim1, -prim2)
-
-# Add dataframe with corrected latlon
-latlon <- read.csv(here('Data/Clean/LPS_compiled_0222_bfttargeted_allsizes.csv'))
-latlon <- latlon[latlon$id %in% target_bft$id,]
-latlon <- unique(latlon)
-latlon <- latlon[!is.na(latlon$latddmm) & !is.na(latlon$londdmm),]
-latlon <- dplyr::select(latlon, id, londdmm, latddmm)
-
-# Merge
-target_bft <- dplyr::select(target_bft, -londdmm, -latddmm)
-target_bft <- left_join(target_bft, latlon, by=c('id'))
-
-# Remove observations without spatial data
-target_bft <- subset(target_bft, !is.na(latddmm))
-target_bft <- subset(target_bft, !is.na(londdmm))
 
 # Calculate lat-lon
 # This is reported in DDMM, so must be converted
@@ -110,11 +119,11 @@ ggplot(coast) +
   coord_sf(xlim=c(st_bbox(bft_sf)[1], st_bbox(bft_sf)[3]),
            ylim=c(st_bbox(bft_sf)[2], st_bbox(bft_sf)[4]))
 
-
 # Still some clearly incorrect values.
 # Pull out observations on land
 nwat <- st_read(here('Data/GIS/Combined_Bluefin2.shp'), quiet=T)
 nwat <- st_transform(nwat, crs="EPSG:4326")
+nwat <- st_make_valid(nwat)
 good <- st_intersection(bft_sf, nwat)
 # Remove
 target_bft <- target_bft[target_bft$id %in% good$id,]
@@ -122,9 +131,19 @@ bft_sf <- bft_sf[bft_sf$id %in% good$id,]
 # Plot just to see
 ggplot(coast) +
   geom_sf(fill='darkgray') +
+  geom_sf(data=nafo, fill=NA, aes(fill=Region), alpha=0.4) +
   geom_sf(data=bft_sf, cex=0.5) +
-  coord_sf(xlim=c(-77, -67),
-           ylim=c(36, 46))
+  coord_sf(xlim=c(-77, -55),
+           ylim=c(35, 48))
+
+# One left, all the way out in Nova Scotia. Remove.
+nafo <- st_read(here('Data/GIS/nafo_continental_shelf_10kmbuff.shp'),
+                quiet=T)
+nafo <- nafo[nafo$Region == 'US',]
+nafo <- st_transform(nafo, st_crs(bft_sf))
+nafo <- st_make_valid(nafo)
+
+bft_sf2 <- st_intersection(bft_sf, nafo)
 
 # Shift back to df
 target_bft <- sfheaders::sf_to_df(bft_sf, fill=T)
@@ -188,7 +207,7 @@ summary(target_bft)
 ## AS OF JANUARY 2024, STOP HERE. YOU DO NOT HAVE TO COMPLETE CLEANING 
 ## 1993-2001.
 write.csv(target_bft,
-          here('Data/Clean/LPS_LargeTarget_Clean_2024_2.csv'),
+          here('Data/Clean/LPS_LargeTarget_Clean_2024_3.csv'),
           row.names = F)
 
 # Are there obsevations in the prepared data that don't match my data

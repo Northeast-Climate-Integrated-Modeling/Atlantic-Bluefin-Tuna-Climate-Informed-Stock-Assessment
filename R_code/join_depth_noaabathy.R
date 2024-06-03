@@ -26,7 +26,7 @@ theme_set(theme(panel.grid.major = element_line(color='lightgray'),
                 plot.caption=element_text(hjust=0, face='italic', size=12)))
 
 # Load station data from OISST-SST merge
-stations <- read.csv(here('Data/Clean/LPS_SmallTarget_Clean_2024_2.csv'))
+stations <- read.csv(here('Data/Clean/LPS_LargeTarget_Clean_2024_3.csv'))
 # Remember this is just station data, missing catch data from large category
 head(stations)
 
@@ -78,7 +78,7 @@ stations$depth <- stations$depth / 3.28084
   
 # Comparisons
 # Set sequence of years to plot
-yearstoplot <- seq(2002, 2022)
+yearstoplot <- seq(2002, 2023)
 
 # Plot comparisons, check for adhesion to 1:1 line
 for(i in 1:length(yearstoplot)){
@@ -96,7 +96,7 @@ for(i in 1:length(yearstoplot)){
           ggtitle(paste("Depth differences:", plotyr, sep = " ")))
 }
 
-# Plot OISST vs Field SST for all years
+# Plot GEBCO vs Field depth for all years
 ggplot2::ggplot(stations, aes(x=depth, y=bathy, col=year)) +
   geom_point(alpha=0.8, pch=16)+
   geom_abline(intercept = 0, slope = 1) +
@@ -159,15 +159,15 @@ yrmap <- function(mapyr){
 # Plot SST difference in space for every year
 # Blue: NOAA shallower than field
 # Red: field shallower than NOAA
-for(mapyr in 1993:2021){
+for(mapyr in 2021:2023){
   print(yrmap(mapyr)) 
 }
 
-# Executive decision: if field depth is within 215m deg of NOAA bathy, use field depth value
+# Executive decision: if field depth is within 215m of NOAA bathy, use field depth value
 # If field depth is more than 215m different from NOAA bathy, use NOAA bathy
 nrow(stations[!is.na(stations$depthdif) & abs(stations$depthdif) <= 173,]) / 
   nrow(stations[!is.na(stations$depthdif),]) * 100
-# 85% of our observations with both values are within 173m
+# 99% of our observations with both values are within 173m
 
 # Call new columns
 stations$temp <- NA
@@ -195,8 +195,8 @@ st_crs(badvals.sf) <- 'EPSG:4326'
 ggplot() +
   geom_sf(data=coast, fill='gray') +
   geom_sf(data=badvals.sf, col='black') +
-  coord_sf(xlim=c(-73, -69),
-           ylim=c(41, 43))
+  coord_sf(xlim=c(-71, -63),
+           ylim=c(42, 43.5))
 # No. Chances are these are values that are actually on land. 
 # They will be removed in a later step.
 
@@ -208,7 +208,9 @@ abline(h=0.7, col='red')
 # Remove unnecessary columns
 stations <- dplyr::select(stations,
                                    -depth, -bathy, -depthdif)
-colnames(stations) <- c(colnames(stations[1:11]), 'depth', 'depthsource')
+stations <- stations %>% 
+  rename(bathy = temp) %>% 
+  as.data.frame()
 head(stations)
 
 # Remove NA output
@@ -216,4 +218,4 @@ stations <- stations[!is.na(stations$bathy),]
 
 # Save output
 write.csv(stations, row.names = F, 
-          here('Data/Clean/AllYears_Canada_UpdatedDepth.csv'))
+          here('Data/Clean/LPS_LargeTarget_Clean_2024_3.csv'))
